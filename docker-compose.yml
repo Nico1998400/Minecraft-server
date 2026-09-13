@@ -1,0 +1,23 @@
+# Local development database. NOT for production.
+# Override credentials via a local .env file (gitignored).
+services:
+  postgres:
+    image: postgres:18
+    container_name: nordia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${NORDIA_DB_NAME:-nordia}
+      POSTGRES_USER: ${NORDIA_DB_USER:-nordia}
+      POSTGRES_PASSWORD: ${NORDIA_DB_PASSWORD:-nordia_dev_only}
+    ports:
+      - "127.0.0.1:${NORDIA_DB_PORT:-5432}:5432"
+    volumes:
+      - nordia-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NORDIA_DB_USER:-nordia} -d ${NORDIA_DB_NAME:-nordia}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  nordia-pgdata:
