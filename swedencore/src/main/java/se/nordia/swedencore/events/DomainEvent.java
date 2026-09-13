@@ -19,4 +19,7 @@ public sealed interface DomainEvent {
 
     record SettlementChanged(long settlementId) implements DomainEvent {
     }
+
+    record ShopChanged(long shopId) implements DomainEvent {
+    }
 }

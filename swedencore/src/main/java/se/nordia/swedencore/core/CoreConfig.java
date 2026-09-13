@@ -6,6 +6,7 @@ import se.nordia.swedencore.database.DatabaseConfig;
 import se.nordia.swedencore.economy.EconomyConfig;
 import se.nordia.swedencore.localization.SupportedLocale;
 import se.nordia.swedencore.properties.PropertyService;
+import se.nordia.swedencore.shops.ShopService;
 import se.nordia.swedencore.skills.SkillsConfig;
 
 /** Complete, validated plugin configuration. Built by the Paper layer from config.yml and environment variables. */
@@ -16,12 +17,14 @@ public record CoreConfig(
         CompanyConfig companies,
         ContractConfig contracts,
         PropertyService.Config properties,
+        ShopService.Config shops,
         SupportedLocale defaultLocale,
         boolean shutdownOnDatabaseFailure
 ) {
     /** Defaults for everything except the database; used by tests. */
     public static CoreConfig defaults(DatabaseConfig database) {
         return new CoreConfig(database, EconomyConfig.defaults(), SkillsConfig.defaults(), CompanyConfig.defaults(),
-                ContractConfig.defaults(), PropertyService.Config.defaults(), SupportedLocale.SV_SE, true);
+                ContractConfig.defaults(), PropertyService.Config.defaults(), ShopService.Config.defaults(),
+                SupportedLocale.SV_SE, true);
     }
 }

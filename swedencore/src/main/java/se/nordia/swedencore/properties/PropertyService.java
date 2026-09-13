@@ -70,6 +70,28 @@ public final class PropertyService {
         });
     }
 
+    /** Runs inside the purchase transaction before ownership changes (e.g. shops at the property are removed). */
+    @FunctionalInterface
+    public interface OwnershipChangeHook {
+        void beforeOwnerChange(Tx tx, long propertyId) throws SQLException;
+    }
+
+    private final List<OwnershipChangeHook> ownershipHooks = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void addOwnershipChangeHook(OwnershipChangeHook hook) {
+        ownershipHooks.add(hook);
+    }
+
+    /** Locks and returns a property (for services acting on property-bound entities in their own transactions). */
+    public Property lockProperty(Tx tx, long id) throws SQLException {
+        return lock(tx, id);
+    }
+
+    /** Throws unless the actor owns the property personally or has one of the roles in the owning company. */
+    public void requirePropertyOwner(Tx tx, Property property, UUID actor, CompanyRole... companyRoles) throws SQLException {
+        requireOwner(tx, property, actor, companyRoles);
+    }
+
     // ------------------------------------------------------------------ administration
 
     public Property create(String rawName, Property.Type type, Region region, Money price) {
@@ -185,6 +207,9 @@ public final class PropertyService {
                             VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     propertyId, property.ownerType(), property.ownerId(), buyerType, buyerId, property.price().ore(), transactionId);
             tx.update("DELETE FROM property_trusted WHERE property_id = ?", propertyId);
+            for (OwnershipChangeHook hook : ownershipHooks) {
+                hook.beforeOwnerChange(tx, propertyId);
+            }
             tx.update("""
                             UPDATE properties SET owner_type = ?, owner_id = ?, status = 'OWNED', market_value = price, updated_at = now()
                             WHERE id = ?""",

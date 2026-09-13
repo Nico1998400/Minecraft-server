@@ -11,6 +11,7 @@ import se.nordia.swedencore.economy.EconomyConfig;
 import se.nordia.swedencore.economy.Money;
 import se.nordia.swedencore.localization.SupportedLocale;
 import se.nordia.swedencore.properties.PropertyService;
+import se.nordia.swedencore.shops.ShopService;
 import se.nordia.swedencore.skills.LevelCurve;
 import se.nordia.swedencore.skills.Skill;
 import se.nordia.swedencore.skills.SkillsConfig;
@@ -62,8 +63,14 @@ public final class PaperConfigLoader {
         });
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
-                contracts(section(file, "contracts")), properties(section(file, "properties")), defaultLocale,
-                db.getBoolean("shutdown-server-on-failure", true));
+                contracts(section(file, "contracts")), properties(section(file, "properties")), shops(section(file, "shops")),
+                defaultLocale, db.getBoolean("shutdown-server-on-failure", true));
+    }
+
+    static ShopService.Config shops(ConfigurationSection s) {
+        ShopService.Config d = ShopService.Config.defaults();
+        return new ShopService.Config(s.getInt("max-listings-per-shop", d.maxListingsPerShop()),
+                s.getInt("max-bundles-per-purchase", d.maxBundlesPerPurchase()));
     }
 
     static PropertyService.Config properties(ConfigurationSection s) {

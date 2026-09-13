@@ -16,6 +16,9 @@ import se.nordia.swedencore.paper.command.CommandServices;
 import se.nordia.swedencore.paper.command.CompanyCommands;
 import se.nordia.swedencore.paper.command.ContractCommands;
 import se.nordia.swedencore.paper.command.PropertyCommands;
+import se.nordia.swedencore.paper.command.ShopCommands;
+import se.nordia.swedencore.paper.shops.ShopIndex;
+import se.nordia.swedencore.paper.shops.ShopListener;
 import se.nordia.swedencore.paper.command.StashCommands;
 import se.nordia.swedencore.paper.properties.ProtectionIndex;
 import se.nordia.swedencore.paper.properties.ProtectionListener;
@@ -131,6 +134,11 @@ public final class SwedenCorePlugin extends JavaPlugin {
         registerListeners(new ProtectionListener(protection, messages, getConfig().getBoolean("properties.protect-city-land", true)));
         protection.reloadAll();
 
+        // ---- shops
+        ShopIndex shopIndex = new ShopIndex(this, core, tasks);
+        registerListeners(shopIndex, new ShopListener(core, shopIndex, protection, messages, tasks));
+        shopIndex.queueReload();
+
         // ---- contracts: expire overdue contracts every minute and tell online parties
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async(() -> core.contracts().expireDue())
                 .whenComplete((expired, error) -> {
@@ -158,6 +166,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new ContractCommands(services).register(event.registrar());
             new StashCommands(services).register(event.registrar());
             new PropertyCommands(services, protection).register(event.registrar());
+            new ShopCommands(services, shopIndex, protection).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

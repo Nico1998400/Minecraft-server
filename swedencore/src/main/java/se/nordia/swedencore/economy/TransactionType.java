@@ -31,6 +31,8 @@ public enum TransactionType {
     CONTRACT_FEE,
     /** Property purchase. */
     PROPERTY_PURCHASE,
+    /** A player buys goods in a physical shop. */
+    SHOP_PURCHASE,
     /** Settlement founding / upgrade costs. */
     SETTLEMENT_FEE,
     /** Moving a dissolved entity's remaining funds to its owner. */

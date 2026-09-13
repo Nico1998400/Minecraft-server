@@ -66,6 +66,10 @@ properties:
   # City land outside properties is public space: nobody builds there (admins with nordia.admin.property.bypass can).
   protect-city-land: true
 
+shops:
+  max-listings-per-shop: 54
+  max-bundles-per-purchase: 16
+
 skills:
   max-level: 100
   # XP to advance from level L to L+1 = base * L^exponent

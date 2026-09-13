@@ -4,6 +4,7 @@ import se.nordia.swedencore.cities.CityService;
 import se.nordia.swedencore.companies.CompanyService;
 import se.nordia.swedencore.events.DomainEvents;
 import se.nordia.swedencore.properties.PropertyService;
+import se.nordia.swedencore.shops.ShopService;
 import se.nordia.swedencore.contracts.ContractService;
 import se.nordia.swedencore.inventory.ItemStashService;
 import se.nordia.swedencore.database.Database;
@@ -42,6 +43,7 @@ public final class NordiaCore {
     private final DomainEvents events;
     private final CityService cities;
     private final PropertyService properties;
+    private final ShopService shops;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -61,6 +63,11 @@ public final class NordiaCore {
         this.contracts = new ContractService(database, economy, companies, skills, reputation, stash, config.contracts(), clock);
         this.cities = new CityService(database, economy);
         this.properties = new PropertyService(database, economy, companies, cities, events, config.properties());
+        this.shops = new ShopService(database, economy, properties, events, config.shops());
+    }
+
+    public ShopService shops() {
+        return shops;
     }
 
     public DomainEvents events() {
