@@ -13,8 +13,11 @@ import se.nordia.swedencore.localization.LocalizationService;
 import se.nordia.swedencore.paper.PaperConfigLoader;
 import se.nordia.swedencore.paper.command.AdminCommands;
 import se.nordia.swedencore.paper.command.CommandServices;
+import se.nordia.swedencore.paper.command.CompanyCommands;
 import se.nordia.swedencore.paper.command.EconomyCommands;
+import se.nordia.swedencore.paper.command.JobCommands;
 import se.nordia.swedencore.paper.command.LanguageCommand;
+import se.nordia.swedencore.paper.jobs.WorkTracker;
 import se.nordia.swedencore.paper.command.SkillCommands;
 import se.nordia.swedencore.paper.listener.ConnectionListener;
 import se.nordia.swedencore.paper.scheduler.Tasks;
@@ -108,11 +111,23 @@ public final class SwedenCorePlugin extends JavaPlugin {
         shutdownHooks.add(skillTracker::flushAllBlocking);
         shutdownHooks.add(() -> placedBlocks.saveAll(getServer().getWorlds()));
 
+        // ---- employment
+        int payrollMinutes = config.companies().payrollIntervalMinutes();
+        WorkTracker work = new WorkTracker(core.payroll(), activity, messages, tasks, getLogger(),
+                config.skills().employmentBonusPercent(), payrollMinutes);
+        skillTracker.addListener(work);
+        skillTracker.setBonusProvider(work::bonusPercent);
+        quitHooks.add(work::stopDuty);
+        getServer().getScheduler().runTaskTimer(this, work::tickMinute, 1200L, 1200L);
+        getServer().getScheduler().runTaskTimer(this, work::flushAll, payrollMinutes * 1200L, payrollMinutes * 1200L);
+
         CommandServices services = new CommandServices(core, messages, tasks, sessions, getPluginMeta().getVersion());
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             new EconomyCommands(services).register(event.registrar());
             new LanguageCommand(services).register(event.registrar());
             new SkillCommands(services, skillTracker).register(event.registrar());
+            new CompanyCommands(services).register(event.registrar());
+            new JobCommands(services, work).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

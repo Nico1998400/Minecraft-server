@@ -29,6 +29,18 @@ economy:
   # Smallest /pay amount.
   min-payment: "0.01"
 
+companies:
+  # Paid by the founder. Destroyed (money sink) until cities can receive fees.
+  registration-fee: "5000"
+  max-owned-companies: 3
+  max-open-positions: 20
+  max-salary-per-hour: "100000"
+  max-pending-applications: 10
+  # Verified work minutes are paid in batches this often (1-60).
+  payroll-interval-minutes: 5
+  # Company reputation change for every payroll batch it cannot pay.
+  wage-default-reputation: -1
+
 skills:
   max-level: 100
   # XP to advance from level L to L+1 = base * L^exponent

@@ -12,6 +12,7 @@ import se.nordia.swedencore.localization.LocalizationService;
 import se.nordia.swedencore.localization.SupportedLocale;
 import se.nordia.swedencore.paper.session.PlayerSession;
 import se.nordia.swedencore.paper.session.PlayerSessions;
+import se.nordia.swedencore.skills.Skill;
 
 import java.text.NumberFormat;
 import java.time.Instant;
@@ -108,6 +109,9 @@ public final class Messages {
     private TagResolver toResolver(SupportedLocale locale, String name, Object value) {
         if (value instanceof Component component) {
             return Placeholder.component(name, component);
+        }
+        if (value instanceof Skill skill) {
+            return Placeholder.component(name, render(locale, "skill." + skill.name()));
         }
         return Placeholder.unparsed(name, format(locale, value));
     }

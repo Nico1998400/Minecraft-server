@@ -2,6 +2,7 @@ package se.nordia.swedencore.paper;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import se.nordia.swedencore.companies.CompanyConfig;
 import se.nordia.swedencore.core.CoreConfig;
 import se.nordia.swedencore.core.DomainException;
 import se.nordia.swedencore.database.DatabaseConfig;
@@ -58,8 +59,20 @@ public final class PaperConfigLoader {
             return SupportedLocale.SV_SE;
         });
 
-        return new CoreConfig(database, economy, skills(section(file, "skills")), defaultLocale,
-                db.getBoolean("shutdown-server-on-failure", true));
+        return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
+                defaultLocale, db.getBoolean("shutdown-server-on-failure", true));
+    }
+
+    static CompanyConfig companies(ConfigurationSection section) {
+        CompanyConfig defaults = CompanyConfig.defaults();
+        return new CompanyConfig(
+                money(section.getString("registration-fee", "5000"), true),
+                section.getInt("max-owned-companies", defaults.maxOwnedCompanies()),
+                section.getInt("max-open-positions", defaults.maxOpenPositions()),
+                money(section.getString("max-salary-per-hour", "100000"), false),
+                section.getInt("max-pending-applications", defaults.maxPendingApplications()),
+                section.getInt("payroll-interval-minutes", defaults.payrollIntervalMinutes()),
+                section.getInt("wage-default-reputation", defaults.wageDefaultReputation()));
     }
 
     static SkillsConfig skills(ConfigurationSection section) {

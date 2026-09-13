@@ -1,8 +1,12 @@
 package se.nordia.swedencore.core;
 
+import se.nordia.swedencore.companies.CompanyService;
 import se.nordia.swedencore.database.Database;
 import se.nordia.swedencore.economy.EconomyService;
+import se.nordia.swedencore.jobs.JobService;
+import se.nordia.swedencore.jobs.PayrollService;
 import se.nordia.swedencore.player.PlayerService;
+import se.nordia.swedencore.reputation.ReputationService;
 import se.nordia.swedencore.skills.SkillService;
 
 import java.time.Clock;
@@ -24,6 +28,10 @@ public final class NordiaCore {
     private final EconomyService economy;
     private final PlayerService players;
     private final SkillService skills;
+    private final ReputationService reputation;
+    private final PayrollService payroll;
+    private final CompanyService companies;
+    private final JobService jobs;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -34,6 +42,10 @@ public final class NordiaCore {
         this.economy = new EconomyService(database, config.economy());
         this.players = new PlayerService(database, economy);
         this.skills = new SkillService(database, config.skills());
+        this.reputation = new ReputationService(database);
+        this.payroll = new PayrollService(database, economy, reputation, config.companies(), clock);
+        this.companies = new CompanyService(database, economy, payroll, config.companies());
+        this.jobs = new JobService(database, companies, skills);
     }
 
     public CoreConfig config() {
@@ -62,5 +74,21 @@ public final class NordiaCore {
 
     public SkillService skills() {
         return skills;
+    }
+
+    public ReputationService reputation() {
+        return reputation;
+    }
+
+    public PayrollService payroll() {
+        return payroll;
+    }
+
+    public CompanyService companies() {
+        return companies;
+    }
+
+    public JobService jobs() {
+        return jobs;
     }
 }

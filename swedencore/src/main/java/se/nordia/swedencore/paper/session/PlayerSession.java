@@ -7,8 +7,17 @@ import java.util.UUID;
 /** Volatile per-online-player state. The database remains the source of truth. */
 public final class PlayerSession {
 
+    /** A destructive action awaiting confirmation (e.g. dissolving a company). */
+    public record PendingConfirmation(String action, long targetId, long expiresAtMillis) {
+        public boolean matches(String otherAction, long now) {
+            return action.equals(otherAction) && now <= expiresAtMillis;
+        }
+    }
+
     private final UUID uuid;
     private volatile SupportedLocale locale;
+    private volatile Long selectedCompanyId;
+    private volatile PendingConfirmation pendingConfirmation;
 
     public PlayerSession(UUID uuid, SupportedLocale locale) {
         this.uuid = uuid;
@@ -26,5 +35,22 @@ public final class PlayerSession {
 
     public void locale(SupportedLocale locale) {
         this.locale = locale;
+    }
+
+    /** Company chosen with {@code /company use}, used when a command omits the company. */
+    public Long selectedCompanyId() {
+        return selectedCompanyId;
+    }
+
+    public void selectedCompanyId(Long companyId) {
+        this.selectedCompanyId = companyId;
+    }
+
+    public PendingConfirmation pendingConfirmation() {
+        return pendingConfirmation;
+    }
+
+    public void pendingConfirmation(PendingConfirmation confirmation) {
+        this.pendingConfirmation = confirmation;
     }
 }
