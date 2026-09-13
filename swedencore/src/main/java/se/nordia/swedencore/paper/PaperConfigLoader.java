@@ -3,6 +3,7 @@ package se.nordia.swedencore.paper;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import se.nordia.swedencore.companies.CompanyConfig;
+import se.nordia.swedencore.contracts.ContractConfig;
 import se.nordia.swedencore.core.CoreConfig;
 import se.nordia.swedencore.core.DomainException;
 import se.nordia.swedencore.database.DatabaseConfig;
@@ -60,7 +61,23 @@ public final class PaperConfigLoader {
         });
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
-                defaultLocale, db.getBoolean("shutdown-server-on-failure", true));
+                contracts(section(file, "contracts")), defaultLocale, db.getBoolean("shutdown-server-on-failure", true));
+    }
+
+    static ContractConfig contracts(ConfigurationSection s) {
+        ContractConfig d = ContractConfig.defaults();
+        return new ContractConfig(
+                s.getInt("fee-percent", d.feePercent()),
+                s.getInt("max-active-per-issuer", d.maxActivePerIssuer()),
+                s.getInt("max-active-per-contractor", d.maxActivePerContractor()),
+                s.getInt("max-duration-hours", d.maxDurationHours()),
+                s.getLong("sek-per-xp", d.sekPerXp()),
+                s.getLong("max-xp-per-contract", d.maxXpPerContract()),
+                money(s.getString("min-reward-for-reputation", "500"), true),
+                s.getInt("reputation.contractor-completed", d.contractorCompletionReputation()),
+                s.getInt("reputation.issuer-completed", d.issuerCompletionReputation()),
+                s.getInt("reputation.abandoned", d.abandonReputation()),
+                s.getInt("reputation.expired", d.expiryReputation()));
     }
 
     static CompanyConfig companies(ConfigurationSection section) {

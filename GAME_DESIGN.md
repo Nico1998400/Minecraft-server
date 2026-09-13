@@ -50,8 +50,10 @@ Own skill system (not McMMO). Initial skills: **Mining, Farming, Herbalism, Buil
 Max level *(config: 100)*.
 
 ### Level curve
-XP to go from level `L` to `L+1` = `round(base × (L+1)^exponent)` *(config: base 100, exponent 1.6)*.
-Level 10 ≈ 3.5k total XP, level 50 ≈ 190k, level 100 ≈ 1.2M. Early levels come quickly; mastery takes months.
+XP to go from level `L` to `L+1` = `round(base × L^exponent)` *(config: base 50, exponent 1.5)*.
+Level 10 ≈ 5.6k total XP (~2 hours of mining), level 50 ≈ 340k, level 100 ≈ 2M. Early levels come quickly; mastery
+takes months. Diminishing returns: XP above an hourly soft cap per skill *(config: 6 000; herbalism/building 3 000)*
+is granted at 25%.
 
 ### XP sources (MVP)
 | Skill       | Natural gameplay source                                                                 | Anti-exploit                                            |

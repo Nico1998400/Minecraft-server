@@ -27,6 +27,8 @@ public enum TransactionType {
     CONTRACT_PAYOUT,
     /** Escrow returned to issuer. */
     CONTRACT_REFUND,
+    /** Contract creation fee (sink). */
+    CONTRACT_FEE,
     /** Property purchase. */
     PROPERTY_PURCHASE,
     /** Settlement founding / upgrade costs. */

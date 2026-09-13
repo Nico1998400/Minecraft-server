@@ -1,6 +1,7 @@
 package se.nordia.swedencore.core;
 
 import se.nordia.swedencore.companies.CompanyConfig;
+import se.nordia.swedencore.contracts.ContractConfig;
 import se.nordia.swedencore.database.DatabaseConfig;
 import se.nordia.swedencore.economy.EconomyConfig;
 import se.nordia.swedencore.localization.SupportedLocale;
@@ -12,12 +13,13 @@ public record CoreConfig(
         EconomyConfig economy,
         SkillsConfig skills,
         CompanyConfig companies,
+        ContractConfig contracts,
         SupportedLocale defaultLocale,
         boolean shutdownOnDatabaseFailure
 ) {
     /** Defaults for everything except the database; used by tests. */
     public static CoreConfig defaults(DatabaseConfig database) {
         return new CoreConfig(database, EconomyConfig.defaults(), SkillsConfig.defaults(), CompanyConfig.defaults(),
-                SupportedLocale.SV_SE, true);
+                ContractConfig.defaults(), SupportedLocale.SV_SE, true);
     }
 }

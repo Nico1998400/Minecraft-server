@@ -13,6 +13,8 @@ PostgreSQL 18 (dev via docker compose, tests via embedded PostgreSQL). Access th
 | Version | Contents |
 |---|---|
 | V1 | `players`, `accounts`, `transactions`, system accounts MINT and SINK |
+| V2 | `skills` (reference), `skill_progress` |
+| V3 | `reputation_events`, `companies`, `jobs` (reference), `job_positions`, `company_employees`, `job_applications`, `payroll_entries` |
 
 ## Global conventions
 
@@ -61,6 +63,37 @@ Constraints: `UNIQUE(owner_type, owner_id, purpose)`, `CHECK(allow_negative OR b
 | reference_type, reference_id | TEXT NULL | e.g. `CONTRACT`, `42` |
 | memo | TEXT NULL | ≤ 200 chars |
 
+### skills / skill_progress
+`skills(id, sort_order)` is reference data (FK target). `skill_progress(player_uuid, skill_id, xp, level)` — `xp ≥ 0`,
+capped by the configured curve; `level` is denormalised for leaderboards and always recomputed from `xp`.
+XP is buffered in memory per online player and flushed in batches (`xp = xp + delta` under a row lock).
+
+### reputation_events
+Auditable log of reputation changes for `PLAYER`/`COMPANY` subjects with `score_after` and an optional unique
+`idempotency_key` (e.g. `wage-default:<payroll id>`). Scores live in `players.reputation` / `companies.reputation`,
+clamped to −100…100.
+
+### companies
+`id, name, owner_uuid, status (ACTIVE|DISSOLVED|BANKRUPT), reputation, founded_at, dissolved_at`.
+Unique `lower(name)` **among active companies** (partial index). Each company has an account `COMPANY:<id>:MAIN`.
+
+### jobs / job_positions
+`jobs(id, skill_id NULL)` catalogue (MINER→MINING … SHOP_ASSISTANT→none). `job_positions(company_id, job_id, title,
+required_level, salary_per_hour öre, openings, status OPEN|CLOSED)`.
+
+### company_employees
+Membership rows: `role OWNER|MANAGER|EMPLOYEE`, optional `position_id`, `salary_per_hour` (snapshot, editable),
+`hired_at`, `ended_at`, `end_reason LEFT|TERMINATED|DISSOLVED`. Partial unique index: one active membership per
+(company, player). History is kept (rows are ended, never deleted).
+
+### job_applications
+`status PENDING|ACCEPTED|REJECTED|WITHDRAWN|CLOSED`; partial unique index: one PENDING application per (position, applicant).
+
+### payroll_entries
+One row per batch of verified work minutes: `employee_id, company_id, player_uuid, period_start, work_minutes,
+salary_per_hour, amount, status PAID|UNPAID, transaction_id`. `UNIQUE(employee_id, period_start)` makes batches
+idempotent. UNPAID rows are the company's wage arrears, settled oldest-first (`payroll:<id>` transaction key).
+
 ## Invariants (verified by `/eco audit` and tests)
 
 1. `SUM(accounts.balance) = 0` — money is conserved; MINT is negative by the amount ever created.
@@ -72,4 +105,7 @@ Constraints: `UNIQUE(owner_type, owner_id, purpose)`, `CHECK(allow_negative OR b
 
 Transfers lock both account rows with `SELECT … FOR UPDATE ORDER BY id` before reading balances. All code that locks
 more than one row of the same table must lock in ascending id order. When locking rows from different tables, lock
-**domain rows first (e.g. contract, company), then accounts**.
+**domain rows first, then accounts**. Established order:
+
+`players (founding serialisation) → companies → job_positions → job_applications → company_employees → payroll_entries
+→ contracts → reputation subject rows → accounts`

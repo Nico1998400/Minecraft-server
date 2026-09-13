@@ -1,6 +1,8 @@
 package se.nordia.swedencore.core;
 
 import se.nordia.swedencore.companies.CompanyService;
+import se.nordia.swedencore.contracts.ContractService;
+import se.nordia.swedencore.inventory.ItemStashService;
 import se.nordia.swedencore.database.Database;
 import se.nordia.swedencore.economy.EconomyService;
 import se.nordia.swedencore.jobs.JobService;
@@ -32,6 +34,8 @@ public final class NordiaCore {
     private final PayrollService payroll;
     private final CompanyService companies;
     private final JobService jobs;
+    private final ItemStashService stash;
+    private final ContractService contracts;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -46,6 +50,16 @@ public final class NordiaCore {
         this.payroll = new PayrollService(database, economy, reputation, config.companies(), clock);
         this.companies = new CompanyService(database, economy, payroll, config.companies());
         this.jobs = new JobService(database, companies, skills);
+        this.stash = new ItemStashService(database, companies);
+        this.contracts = new ContractService(database, economy, companies, skills, reputation, stash, config.contracts(), clock);
+    }
+
+    public ItemStashService stash() {
+        return stash;
+    }
+
+    public ContractService contracts() {
+        return contracts;
     }
 
     public CoreConfig config() {
