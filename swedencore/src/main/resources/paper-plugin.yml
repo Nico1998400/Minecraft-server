@@ -1,0 +1,25 @@
+name: SwedenCore
+version: '${version}'
+main: se.nordia.swedencore.SwedenCorePlugin
+api-version: '26.2'
+description: NORDIA — player-driven Minecraft society MMO core
+authors: [NORDIA]
+load: POSTWORLD
+
+permissions:
+  nordia.admin:
+    description: All NORDIA administration permissions
+    default: op
+    children:
+      nordia.admin.economy: true
+      nordia.admin.reload: true
+      nordia.balance.others: true
+  nordia.admin.economy:
+    description: Grant/remove money, audit the ledger
+    default: op
+  nordia.admin.reload:
+    description: Reload language files
+    default: op
+  nordia.balance.others:
+    description: View other players' balances
+    default: op

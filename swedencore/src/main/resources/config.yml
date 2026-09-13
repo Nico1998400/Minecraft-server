@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────
+#  SwedenCore — NORDIA configuration
+# ─────────────────────────────────────────────────────────────
+
+language:
+  # Server default language: sv_SE or en_US. Players can override with /language.
+  default: sv_SE
+
+database:
+  host: localhost
+  port: 5432
+  name: nordia
+  user: nordia
+  # Prefer the NORDIA_DB_PASSWORD environment variable in production. Never commit real passwords.
+  # The default matches docker-compose.yml for local development only.
+  password: nordia_dev_only
+  ssl-mode: disable
+  pool-size: 10
+  connection-timeout-ms: 5000
+  # A NORDIA server without its database must not run: economy actions would be lost.
+  shutdown-server-on-failure: true
+
+economy:
+  # Amounts in SEK. Decimals allowed with , or . (max 2). Suffixes k and m are allowed.
+  # One-time money created for each new player. This is a controlled mint (see GAME_DESIGN.md §3).
+  starter-grant: "1000"
+  # Upper bound for any single transfer.
+  max-transfer: "100000000"
+  # Smallest /pay amount.
+  min-payment: "0.01"

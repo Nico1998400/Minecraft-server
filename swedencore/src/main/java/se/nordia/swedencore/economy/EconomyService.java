@@ -86,7 +86,7 @@ public final class EconomyService {
             throw new DomainException("economy.invalid_amount");
         }
         if (amount.isGreaterThan(config.maxTransferAmount())) {
-            throw DomainException.of("economy.amount_too_large", "max", Long.toString(config.maxTransferAmount().ore()));
+            throw DomainException.of("economy.amount_too_large", "max", config.maxTransferAmount());
         }
         if (request.fromAccountId() == request.toAccountId()) {
             throw new DomainException("economy.same_account");
@@ -122,7 +122,7 @@ public final class EconomyService {
             throw new DomainException("economy.balance_overflow");
         }
         if (fromAfter.isNegative() && !from.allowNegative()) {
-            throw DomainException.of("economy.insufficient_funds", "balance", Long.toString(from.balance().ore()));
+            throw DomainException.of("economy.insufficient_funds", "balance", from.balance());
         }
 
         Optional<Long> txId = tx.queryOne("""
@@ -237,16 +237,18 @@ public final class EconomyService {
                             SELECT t.id, t.type, t.memo, t.created_at,
                                    CASE WHEN t.to_account_id = ? THEN t.amount ELSE -t.amount END AS signed_amount,
                                    CASE WHEN t.to_account_id = ? THEN t.to_balance_after ELSE t.from_balance_after END AS balance_after,
-                                   c.owner_type AS cp_type, c.owner_id AS cp_id
+                                   c.owner_type AS cp_type, c.owner_id AS cp_id,
+                                   p.name AS cp_name
                             FROM transactions t
                             JOIN accounts c ON c.id = CASE WHEN t.to_account_id = ? THEN t.from_account_id ELSE t.to_account_id END
+                            LEFT JOIN players p ON c.owner_type = 'PLAYER' AND p.uuid::text = c.owner_id
                             WHERE t.from_account_id = ? OR t.to_account_id = ?
                             ORDER BY t.id DESC
                             LIMIT ?""",
                     rs -> new LedgerEntry(rs.getLong("id"), TransactionType.valueOf(rs.getString("type")),
                             Money.ofOre(rs.getLong("signed_amount")), Money.ofOre(rs.getLong("balance_after")),
                             new AccountOwner(AccountOwner.OwnerType.valueOf(rs.getString("cp_type")), rs.getString("cp_id")),
-                            rs.getString("memo"), Tx.instant(rs, "created_at")),
+                            rs.getString("cp_name"), rs.getString("memo"), Tx.instant(rs, "created_at")),
                     account.id(), account.id(), account.id(), account.id(), account.id(), safeLimit);
         });
     }
