@@ -178,7 +178,7 @@ public final class JobService {
 
     /** Hires the applicant. Re-validates vacancy, membership and skill at decision time. */
     public JobApplication accept(UUID actor, long applicationId) {
-        return database.inTransaction(tx -> {
+        JobApplication accepted = database.inTransaction(tx -> {
             JobApplication app = application(tx, applicationId).orElseThrow(() -> new DomainException("job.application_not_found"));
             companies.lockActive(tx, app.companyId());
             companies.requireRole(tx, app.companyId(), actor, CompanyRole.OWNER, CompanyRole.MANAGER);
@@ -206,6 +206,8 @@ public final class JobService {
                       AND position_id IN (SELECT id FROM job_positions WHERE company_id = ?)""", app.applicantUuid(), app.companyId());
             return application(tx, applicationId).orElseThrow();
         });
+        companies.announceMembershipChange(accepted.companyId());
+        return accepted;
     }
 
     public JobApplication reject(UUID actor, long applicationId) {

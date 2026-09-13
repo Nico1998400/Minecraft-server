@@ -10,6 +10,7 @@ import se.nordia.swedencore.database.DatabaseConfig;
 import se.nordia.swedencore.economy.EconomyConfig;
 import se.nordia.swedencore.economy.Money;
 import se.nordia.swedencore.localization.SupportedLocale;
+import se.nordia.swedencore.properties.PropertyService;
 import se.nordia.swedencore.skills.LevelCurve;
 import se.nordia.swedencore.skills.Skill;
 import se.nordia.swedencore.skills.SkillsConfig;
@@ -61,7 +62,16 @@ public final class PaperConfigLoader {
         });
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
-                contracts(section(file, "contracts")), defaultLocale, db.getBoolean("shutdown-server-on-failure", true));
+                contracts(section(file, "contracts")), properties(section(file, "properties")), defaultLocale,
+                db.getBoolean("shutdown-server-on-failure", true));
+    }
+
+    static PropertyService.Config properties(ConfigurationSection s) {
+        PropertyService.Config d = PropertyService.Config.defaults();
+        return new PropertyService.Config(
+                s.getInt("max-owned-per-player", d.maxOwnedPerPlayer()),
+                s.getLong("max-volume", d.maxVolume()),
+                s.getInt("max-trusted", d.maxTrusted()));
     }
 
     static ContractConfig contracts(ConfigurationSection s) {

@@ -58,6 +58,14 @@ contracts:
     abandoned: -3
     expired: -2
 
+properties:
+  max-owned-per-player: 10
+  # Largest property region in blocks (width × length × height).
+  max-volume: 2000000
+  max-trusted: 20
+  # City land outside properties is public space: nobody builds there (admins with nordia.admin.property.bypass can).
+  protect-city-land: true
+
 skills:
   max-level: 100
   # XP to advance from level L to L+1 = base * L^exponent

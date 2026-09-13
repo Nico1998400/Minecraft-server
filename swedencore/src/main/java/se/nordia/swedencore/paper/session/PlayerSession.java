@@ -14,6 +14,29 @@ public final class PlayerSession {
         }
     }
 
+    /** A block position selected by an administrator (e.g. property corners). */
+    public record BlockPos(String world, int x, int y, int z) {
+    }
+
+    private volatile BlockPos selection1;
+    private volatile BlockPos selection2;
+
+    public BlockPos selection1() {
+        return selection1;
+    }
+
+    public void selection1(BlockPos pos) {
+        this.selection1 = pos;
+    }
+
+    public BlockPos selection2() {
+        return selection2;
+    }
+
+    public void selection2(BlockPos pos) {
+        this.selection2 = pos;
+    }
+
     private final UUID uuid;
     private volatile SupportedLocale locale;
     private volatile Long selectedCompanyId;

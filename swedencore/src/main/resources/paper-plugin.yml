@@ -14,6 +14,17 @@ permissions:
       nordia.admin.economy: true
       nordia.admin.reload: true
       nordia.balance.others: true
+      nordia.admin.property: true
+      nordia.admin.city: true
+  nordia.admin.property:
+    description: Define and delete properties
+    default: op
+  nordia.admin.city:
+    description: Create cities
+    default: op
+  nordia.admin.property.bypass:
+    description: Build anywhere regardless of property protection (not granted by nordia.admin)
+    default: false
   nordia.admin.economy:
     description: Grant/remove money, audit the ledger
     default: op

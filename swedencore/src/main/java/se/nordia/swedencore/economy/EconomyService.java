@@ -238,10 +238,11 @@ public final class EconomyService {
                                    CASE WHEN t.to_account_id = ? THEN t.amount ELSE -t.amount END AS signed_amount,
                                    CASE WHEN t.to_account_id = ? THEN t.to_balance_after ELSE t.from_balance_after END AS balance_after,
                                    c.owner_type AS cp_type, c.owner_id AS cp_id,
-                                   p.name AS cp_name
+                                   COALESCE(p.name, co.name) AS cp_name
                             FROM transactions t
                             JOIN accounts c ON c.id = CASE WHEN t.to_account_id = ? THEN t.from_account_id ELSE t.to_account_id END
                             LEFT JOIN players p ON c.owner_type = 'PLAYER' AND p.uuid::text = c.owner_id
+                            LEFT JOIN companies co ON c.owner_type = 'COMPANY' AND co.id::text = c.owner_id
                             WHERE t.from_account_id = ? OR t.to_account_id = ?
                             ORDER BY t.id DESC
                             LIMIT ?""",

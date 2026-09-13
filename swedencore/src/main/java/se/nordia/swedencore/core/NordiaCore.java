@@ -1,6 +1,9 @@
 package se.nordia.swedencore.core;
 
+import se.nordia.swedencore.cities.CityService;
 import se.nordia.swedencore.companies.CompanyService;
+import se.nordia.swedencore.events.DomainEvents;
+import se.nordia.swedencore.properties.PropertyService;
 import se.nordia.swedencore.contracts.ContractService;
 import se.nordia.swedencore.inventory.ItemStashService;
 import se.nordia.swedencore.database.Database;
@@ -36,6 +39,9 @@ public final class NordiaCore {
     private final JobService jobs;
     private final ItemStashService stash;
     private final ContractService contracts;
+    private final DomainEvents events;
+    private final CityService cities;
+    private final PropertyService properties;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -43,15 +49,30 @@ public final class NordiaCore {
         this.clock = clock;
         this.logger = logger;
 
+        this.events = new DomainEvents(logger);
         this.economy = new EconomyService(database, config.economy());
         this.players = new PlayerService(database, economy);
         this.skills = new SkillService(database, config.skills());
         this.reputation = new ReputationService(database);
         this.payroll = new PayrollService(database, economy, reputation, config.companies(), clock);
-        this.companies = new CompanyService(database, economy, payroll, config.companies());
+        this.companies = new CompanyService(database, economy, payroll, config.companies(), events);
         this.jobs = new JobService(database, companies, skills);
         this.stash = new ItemStashService(database, companies);
         this.contracts = new ContractService(database, economy, companies, skills, reputation, stash, config.contracts(), clock);
+        this.cities = new CityService(database, economy);
+        this.properties = new PropertyService(database, economy, companies, cities, events, config.properties());
+    }
+
+    public DomainEvents events() {
+        return events;
+    }
+
+    public CityService cities() {
+        return cities;
+    }
+
+    public PropertyService properties() {
+        return properties;
     }
 
     public ItemStashService stash() {

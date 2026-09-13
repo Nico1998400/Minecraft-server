@@ -10,6 +10,8 @@ import se.nordia.swedencore.economy.Money;
 import se.nordia.swedencore.economy.TransactionType;
 import se.nordia.swedencore.economy.TransferReceipt;
 import se.nordia.swedencore.economy.TransferRequest;
+import se.nordia.swedencore.events.DomainEvent;
+import se.nordia.swedencore.events.DomainEvents;
 import se.nordia.swedencore.jobs.PayrollService;
 import se.nordia.swedencore.skills.Skill;
 
@@ -43,12 +45,18 @@ public final class CompanyService {
     private final EconomyService economy;
     private final PayrollService payroll;
     private final CompanyConfig config;
+    private final DomainEvents events;
 
-    public CompanyService(Database database, EconomyService economy, PayrollService payroll, CompanyConfig config) {
+    public CompanyService(Database database, EconomyService economy, PayrollService payroll, CompanyConfig config, DomainEvents events) {
         this.database = database;
         this.economy = economy;
         this.payroll = payroll;
         this.config = config;
+        this.events = events;
+    }
+
+    private void membershipChanged(long companyId) {
+        events.publish(new DomainEvent.CompanyMembershipChanged(companyId));
     }
 
     public CompanyConfig config() {
@@ -70,7 +78,7 @@ public final class CompanyService {
 
     public Company found(UUID owner, String rawName) {
         String name = normalizeName(rawName);
-        return database.inTransaction(tx -> {
+        Company company = database.inTransaction(tx -> {
             // Serialise founding per player so the ownership limit cannot be raced.
             tx.queryOne("SELECT uuid FROM players WHERE uuid = ? FOR UPDATE", rs -> true, owner)
                     .orElseThrow(() -> new DomainException("player.unknown"));
@@ -99,6 +107,8 @@ public final class CompanyService {
             tx.update("INSERT INTO company_employees (company_id, player_uuid, role) VALUES (?, ?, 'OWNER')", id, owner);
             return find(tx, id).orElseThrow();
         });
+        membershipChanged(company.id());
+        return company;
     }
 
     // ------------------------------------------------------------------ queries
@@ -299,6 +309,7 @@ public final class CompanyService {
             }
             endMembership(tx, companyId, target, "TERMINATED");
         });
+        membershipChanged(companyId);
     }
 
     public void leave(UUID player, long companyId) {
@@ -310,6 +321,7 @@ public final class CompanyService {
             }
             endMembership(tx, companyId, player, "LEFT");
         });
+        membershipChanged(companyId);
     }
 
     private static void endMembership(Tx tx, long companyId, UUID player, String reason) throws SQLException {
@@ -322,7 +334,7 @@ public final class CompanyService {
      * paid out to the owner.
      */
     public Money dissolve(UUID actor, long companyId) {
-        return database.inTransaction(tx -> {
+        Money payout = database.inTransaction(tx -> {
             lockActive(tx, companyId);
             requireRole(tx, companyId, actor, CompanyRole.OWNER);
             long others = tx.queryLong("SELECT count(*) FROM company_employees WHERE company_id = ? AND ended_at IS NULL AND role <> 'OWNER'", companyId);
@@ -348,6 +360,13 @@ public final class CompanyService {
             tx.update("UPDATE companies SET status = 'DISSOLVED', dissolved_at = now() WHERE id = ?", companyId);
             return remaining;
         });
+        membershipChanged(companyId);
+        return payout;
+    }
+
+    /** Lets other services (e.g. hiring) announce membership changes they performed. */
+    public void announceMembershipChange(long companyId) {
+        membershipChanged(companyId);
     }
 
     /** Extension point so later modules (contracts, properties, shops) can veto dissolution. */
