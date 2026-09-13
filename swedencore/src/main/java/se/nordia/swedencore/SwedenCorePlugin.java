@@ -1,7 +1,9 @@
 package se.nordia.swedencore;
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import se.nordia.swedencore.core.CoreConfig;
 import se.nordia.swedencore.core.NordiaCore;
@@ -13,11 +15,19 @@ import se.nordia.swedencore.paper.command.AdminCommands;
 import se.nordia.swedencore.paper.command.CommandServices;
 import se.nordia.swedencore.paper.command.EconomyCommands;
 import se.nordia.swedencore.paper.command.LanguageCommand;
+import se.nordia.swedencore.paper.command.SkillCommands;
 import se.nordia.swedencore.paper.listener.ConnectionListener;
 import se.nordia.swedencore.paper.scheduler.Tasks;
 import se.nordia.swedencore.paper.session.PlayerSessions;
+import se.nordia.swedencore.paper.skills.ActivityTracker;
+import se.nordia.swedencore.paper.skills.BuildingXpListener;
+import se.nordia.swedencore.paper.skills.GatheringListener;
+import se.nordia.swedencore.paper.skills.PlacedBlockTracker;
+import se.nordia.swedencore.paper.skills.SkillTracker;
+import se.nordia.swedencore.paper.skills.XpTables;
 import se.nordia.swedencore.paper.text.Messages;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -81,10 +91,28 @@ public final class SwedenCorePlugin extends JavaPlugin {
         ConnectionListener connectionListener = new ConnectionListener(core, sessions, messages, tasks, joinHooks, quitHooks);
         getServer().getPluginManager().registerEvents(connectionListener, this);
 
+        // ---- skills
+        saveResourceIfMissing("skills.yml");
+        XpTables xpTables = new XpTables(YamlConfiguration.loadConfiguration(new File(getDataFolder(), "skills.yml")), getLogger());
+        ActivityTracker activity = new ActivityTracker(config.skills().afkThreshold());
+        PlacedBlockTracker placedBlocks = new PlacedBlockTracker(this, xpTables);
+        SkillTracker skillTracker = new SkillTracker(core.skills(), activity, messages, tasks, getLogger());
+        BuildingXpListener building = new BuildingXpListener(skillTracker, placedBlocks, activity, xpTables,
+                config.skills().buildingMaturity().toMillis());
+        registerListeners(activity, placedBlocks, new GatheringListener(skillTracker, placedBlocks, xpTables), building);
+        joinHooks.add(skillTracker::onJoin);
+        quitHooks.add(skillTracker::onQuit);
+        long flushTicks = Math.max(100, config.skills().flushInterval().toSeconds() * 20);
+        getServer().getScheduler().runTaskTimer(this, skillTracker::flushAll, flushTicks, flushTicks);
+        getServer().getScheduler().runTaskTimer(this, building::tick, 200L, 200L);
+        shutdownHooks.add(skillTracker::flushAllBlocking);
+        shutdownHooks.add(() -> placedBlocks.saveAll(getServer().getWorlds()));
+
         CommandServices services = new CommandServices(core, messages, tasks, sessions, getPluginMeta().getVersion());
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             new EconomyCommands(services).register(event.registrar());
             new LanguageCommand(services).register(event.registrar());
+            new SkillCommands(services, skillTracker).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 
@@ -113,5 +141,17 @@ public final class SwedenCorePlugin extends JavaPlugin {
 
     public NordiaCore core() {
         return core;
+    }
+
+    private void registerListeners(Listener... listeners) {
+        for (Listener listener : listeners) {
+            getServer().getPluginManager().registerEvents(listener, this);
+        }
+    }
+
+    private void saveResourceIfMissing(String name) {
+        if (!new File(getDataFolder(), name).exists()) {
+            saveResource(name, false);
+        }
     }
 }

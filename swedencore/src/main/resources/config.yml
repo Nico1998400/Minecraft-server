@@ -28,3 +28,29 @@ economy:
   max-transfer: "100000000"
   # Smallest /pay amount.
   min-payment: "0.01"
+
+skills:
+  max-level: 100
+  # XP to advance from level L to L+1 = base * L^exponent
+  level-curve:
+    base: 50
+    exponent: 1.5
+  # XP per skill per rolling hour before diminishing returns. 0 disables the cap for that skill.
+  hourly-soft-cap:
+    MINING: 6000
+    FARMING: 6000
+    HERBALISM: 3000
+    BUILDING: 3000
+    FORESTRY: 6000
+    FISHING: 6000
+    ENGINEERING: 6000
+    LOGISTICS: 6000
+  # Percentage of XP still granted above the soft cap.
+  soft-cap-percent: 25
+  # Extra XP for work in the skill of your on-duty job.
+  employment-bonus-percent: 10
+  # Without real input (turning, chatting, commands, inventory clicks) for this long a player is AFK.
+  afk-threshold-seconds: 180
+  flush-interval-seconds: 30
+  # Placed building blocks must still stand after this long to give Building XP.
+  building-maturity-seconds: 300

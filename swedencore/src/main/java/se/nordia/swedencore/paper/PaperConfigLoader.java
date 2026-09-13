@@ -8,7 +8,12 @@ import se.nordia.swedencore.database.DatabaseConfig;
 import se.nordia.swedencore.economy.EconomyConfig;
 import se.nordia.swedencore.economy.Money;
 import se.nordia.swedencore.localization.SupportedLocale;
+import se.nordia.swedencore.skills.LevelCurve;
+import se.nordia.swedencore.skills.Skill;
+import se.nordia.swedencore.skills.SkillsConfig;
 
+import java.time.Duration;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -53,7 +58,26 @@ public final class PaperConfigLoader {
             return SupportedLocale.SV_SE;
         });
 
-        return new CoreConfig(database, economy, defaultLocale, db.getBoolean("shutdown-server-on-failure", true));
+        return new CoreConfig(database, economy, skills(section(file, "skills")), defaultLocale,
+                db.getBoolean("shutdown-server-on-failure", true));
+    }
+
+    static SkillsConfig skills(ConfigurationSection section) {
+        SkillsConfig defaults = SkillsConfig.defaults();
+        LevelCurve curve = new LevelCurve(
+                section.getLong("level-curve.base", 50),
+                section.getDouble("level-curve.exponent", 1.5),
+                section.getInt("max-level", defaults.curve().maxLevel()));
+        Map<Skill, Long> caps = new EnumMap<>(Skill.class);
+        for (Skill skill : Skill.values()) {
+            caps.put(skill, section.getLong("hourly-soft-cap." + skill.name(), defaults.softCap(skill)));
+        }
+        return new SkillsConfig(curve, caps,
+                section.getInt("soft-cap-percent", defaults.softCapPercent()),
+                section.getInt("employment-bonus-percent", defaults.employmentBonusPercent()),
+                Duration.ofSeconds(section.getLong("afk-threshold-seconds", defaults.afkThreshold().toSeconds())),
+                Duration.ofSeconds(Math.max(5, section.getLong("flush-interval-seconds", defaults.flushInterval().toSeconds()))),
+                Duration.ofSeconds(section.getLong("building-maturity-seconds", defaults.buildingMaturity().toSeconds())));
     }
 
     private static ConfigurationSection section(FileConfiguration file, String path) {

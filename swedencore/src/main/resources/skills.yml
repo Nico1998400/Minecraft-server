@@ -1,0 +1,150 @@
+# ─────────────────────────────────────────────────────────────
+#  SwedenCore — XP tables
+#  Keys are block/item materials (e.g. IRON_ORE) or block tags prefixed with # (e.g. "#logs").
+#  Values are XP per action. Player-placed blocks never give XP (except crops, which require full growth).
+#  Explicit materials override tag values.
+# ─────────────────────────────────────────────────────────────
+
+# Breaking with the correct tool.
+mining:
+  STONE: 1
+  DEEPSLATE: 2
+  TUFF: 1
+  CALCITE: 1
+  GRANITE: 1
+  DIORITE: 1
+  ANDESITE: 1
+  NETHERRACK: 1
+  BLACKSTONE: 1
+  BASALT: 1
+  END_STONE: 2
+  SANDSTONE: 1
+  RED_SANDSTONE: 1
+  TERRACOTTA: 1
+  OBSIDIAN: 8
+  COAL_ORE: 5
+  DEEPSLATE_COAL_ORE: 6
+  COPPER_ORE: 6
+  DEEPSLATE_COPPER_ORE: 7
+  IRON_ORE: 10
+  DEEPSLATE_IRON_ORE: 12
+  GOLD_ORE: 15
+  DEEPSLATE_GOLD_ORE: 17
+  NETHER_GOLD_ORE: 6
+  REDSTONE_ORE: 8
+  DEEPSLATE_REDSTONE_ORE: 9
+  LAPIS_ORE: 12
+  DEEPSLATE_LAPIS_ORE: 14
+  NETHER_QUARTZ_ORE: 6
+  DIAMOND_ORE: 40
+  DEEPSLATE_DIAMOND_ORE: 45
+  EMERALD_ORE: 50
+  DEEPSLATE_EMERALD_ORE: 55
+  ANCIENT_DEBRIS: 80
+  AMETHYST_CLUSTER: 6
+
+# Chopping natural logs (any tool).
+forestry:
+  "#logs": 5
+  MANGROVE_ROOTS: 2
+  MUSHROOM_STEM: 3
+  BROWN_MUSHROOM_BLOCK: 1
+  RED_MUSHROOM_BLOCK: 1
+
+# Harvesting. Ageable crops must be fully grown; other entries must not be player-placed.
+farming:
+  WHEAT: 4
+  CARROTS: 4
+  POTATOES: 4
+  BEETROOTS: 5
+  COCOA: 5
+  TORCHFLOWER_CROP: 8
+  PITCHER_CROP: 8
+  MELON: 6
+  PUMPKIN: 6
+  SUGAR_CANE: 2
+  CACTUS: 3
+  BAMBOO: 1
+
+herbalism:
+  "#small_flowers": 4
+  SUNFLOWER: 6
+  LILAC: 6
+  ROSE_BUSH: 6
+  PEONY: 6
+  BROWN_MUSHROOM: 5
+  RED_MUSHROOM: 5
+  CRIMSON_FUNGUS: 5
+  WARPED_FUNGUS: 5
+  NETHER_WART: 5
+  LILY_PAD: 4
+  SPORE_BLOSSOM: 10
+  FERN: 1
+  LARGE_FERN: 2
+  VINE: 1
+  GLOW_LICHEN: 2
+
+# Right-click harvesting (berries).
+herbalism-harvest:
+  SWEET_BERRY_BUSH: 4
+  CAVE_VINES: 5
+  CAVE_VINES_PLANT: 5
+
+# Caught items. Anything not listed gives "default".
+fishing:
+  default: 4
+  COD: 10
+  SALMON: 12
+  PUFFERFISH: 15
+  TROPICAL_FISH: 20
+  ENCHANTED_BOOK: 35
+  NAME_TAG: 35
+  NAUTILUS_SHELL: 35
+  SADDLE: 30
+  BOW: 25
+  FISHING_ROD: 20
+
+# Placing blocks that remain for skills.building-maturity-seconds. Cheap filler blocks give nothing.
+building:
+  "#planks": 1
+  "#wool": 1
+  "#stairs": 2
+  "#slabs": 1
+  "#walls": 2
+  "#fences": 1
+  "#doors": 3
+  "#trapdoors": 2
+  STONE_BRICKS: 2
+  BRICKS: 3
+  MUD_BRICKS: 2
+  DEEPSLATE_BRICKS: 3
+  DEEPSLATE_TILES: 3
+  POLISHED_ANDESITE: 2
+  POLISHED_DIORITE: 2
+  POLISHED_GRANITE: 2
+  POLISHED_BLACKSTONE_BRICKS: 3
+  SMOOTH_STONE: 2
+  GLASS: 2
+  GLASS_PANE: 1
+  "#terracotta": 2
+  WHITE_CONCRETE: 2
+  LIGHT_GRAY_CONCRETE: 2
+  GRAY_CONCRETE: 2
+  BLACK_CONCRETE: 2
+  BROWN_CONCRETE: 2
+  RED_CONCRETE: 2
+  ORANGE_CONCRETE: 2
+  YELLOW_CONCRETE: 2
+  LIME_CONCRETE: 2
+  GREEN_CONCRETE: 2
+  CYAN_CONCRETE: 2
+  LIGHT_BLUE_CONCRETE: 2
+  BLUE_CONCRETE: 2
+  PURPLE_CONCRETE: 2
+  MAGENTA_CONCRETE: 2
+  PINK_CONCRETE: 2
+  QUARTZ_BLOCK: 3
+  QUARTZ_BRICKS: 3
+  COPPER_BLOCK: 4
+  IRON_BARS: 2
+  LANTERN: 2

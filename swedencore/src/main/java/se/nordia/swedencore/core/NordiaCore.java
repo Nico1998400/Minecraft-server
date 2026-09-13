@@ -3,6 +3,7 @@ package se.nordia.swedencore.core;
 import se.nordia.swedencore.database.Database;
 import se.nordia.swedencore.economy.EconomyService;
 import se.nordia.swedencore.player.PlayerService;
+import se.nordia.swedencore.skills.SkillService;
 
 import java.time.Clock;
 import java.util.logging.Logger;
@@ -22,6 +23,7 @@ public final class NordiaCore {
 
     private final EconomyService economy;
     private final PlayerService players;
+    private final SkillService skills;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -31,6 +33,7 @@ public final class NordiaCore {
 
         this.economy = new EconomyService(database, config.economy());
         this.players = new PlayerService(database, economy);
+        this.skills = new SkillService(database, config.skills());
     }
 
     public CoreConfig config() {
@@ -55,5 +58,9 @@ public final class NordiaCore {
 
     public PlayerService players() {
         return players;
+    }
+
+    public SkillService skills() {
+        return skills;
     }
 }
