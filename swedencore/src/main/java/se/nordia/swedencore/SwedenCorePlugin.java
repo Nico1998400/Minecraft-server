@@ -180,6 +180,8 @@ public final class SwedenCorePlugin extends JavaPlugin {
                 }), 1200L, 1200L);
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async("expire buy orders", () -> core.orders().expireDue()),
                 1300L, 1200L);
+        getServer().getScheduler().runTaskTimer(this, () -> tasks.async("expire share offers", () -> core.shares().expireDue()),
+                1350L, 1200L);
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async(() -> core.transports().expireDue(ItemTransfer.CODEC))
                 .whenComplete((expired, error) -> {
                     if (error != null) {
@@ -270,6 +272,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new MarketCommand(services).register(event.registrar());
             new LoanCommands(services).register(event.registrar());
             new TransportCommands(services).register(event.registrar());
+            new se.nordia.swedencore.paper.command.ShareCommands(services).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

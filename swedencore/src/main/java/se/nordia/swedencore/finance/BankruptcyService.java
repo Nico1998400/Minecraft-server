@@ -146,17 +146,13 @@ public final class BankruptcyService {
             }
 
             Money remaining = economy.requireAccount(tx, AccountOwner.company(companyId)).balance();
-            if (remaining.isPositive()) {
-                if (totalDebt <= available && !arrearsAfter.isPositive()) {
-                    // Everyone was paid in full: the residual belongs to the owner.
-                    Account owner = economy.requireAccount(tx, AccountOwner.player(company.ownerUuid()));
-                    economy.transfer(tx, TransferRequest.of(account.id(), owner.id(), remaining, TransactionType.DISSOLUTION_PAYOUT)
-                            .withReference("COMPANY", Long.toString(companyId)));
-                } else {
-                    // Rounding dust from pro-rata shares.
-                    economy.burn(tx, account.id(), remaining, TransactionType.BANKRUPTCY_DISTRIBUTION, "bankruptcy-dust:" + companyId, null);
-                }
+            if (remaining.isPositive() && (totalDebt > available || arrearsAfter.isPositive())) {
+                // Rounding dust from pro-rata shares.
+                economy.burn(tx, account.id(), remaining, TransactionType.BANKRUPTCY_DISTRIBUTION, "bankruptcy-dust:" + companyId, null);
+                remaining = Money.ZERO;
             }
+            // Everyone was paid in full: the residual belongs to the shareholders (the owner if there are none).
+            companies.closeEquity(tx, company, remaining, actor);
             long unpaid = Math.max(0, totalDebt - paidCreditors) + arrearsAfter.ore();
 
             companies.markBankrupt(tx, companyId);

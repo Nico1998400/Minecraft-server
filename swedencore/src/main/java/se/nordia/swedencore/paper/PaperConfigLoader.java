@@ -108,7 +108,7 @@ public final class PaperConfigLoader {
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
                 contracts(section(file, "contracts")), properties(section(file, "properties")), shops(section(file, "shops")),
-                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), production(productionFile, logger), loans(section(file, "loans")), leases(section(file, "renting")), storage(section(file, "storage")), defaultLocale,
+                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), production(productionFile, logger), loans(section(file, "loans")), leases(section(file, "renting")), storage(section(file, "storage")), shares(section(file, "shares")), defaultLocale,
                 db.getBoolean("shutdown-server-on-failure", true));
     }
 
@@ -134,6 +134,13 @@ public final class PaperConfigLoader {
         var d = se.nordia.swedencore.inventory.ItemStashService.Capacity.defaults();
         return new se.nordia.swedencore.inventory.ItemStashService.Capacity(s.getInt("player-stacks", d.playerBase()),
                 s.getInt("company-stacks", d.companyBase()), s.getInt("stacks-per-warehouse", d.perWarehouse()));
+    }
+
+    static se.nordia.swedencore.shares.ShareService.Config shares(ConfigurationSection s) {
+        var d = se.nordia.swedencore.shares.ShareService.Config.defaults();
+        return new se.nordia.swedencore.shares.ShareService.Config(s.getLong("initial-shares", d.initialShares()),
+                s.getLong("max-total-shares", d.maxTotalShares()), s.getInt("fee-percent", d.feePercent()),
+                s.getInt("max-offer-hours", d.maxOfferHours()), s.getInt("max-open-offers", d.maxOpenOffers()));
     }
 
     static BuyOrderService.Config orders(ConfigurationSection s) {

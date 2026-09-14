@@ -72,6 +72,15 @@ storage:
   company-stacks: 216
   stacks-per-warehouse: 1080
 
+shares:
+  # Every new company starts with this many shares, held by the founder. Owners can issue more into the treasury.
+  initial-shares: 1000
+  max-total-shares: 1000000
+  # Fee on share sales, paid by the seller and destroyed (makes wash trading cost money).
+  fee-percent: 1
+  max-offer-hours: 336
+  max-open-offers: 10
+
 renting:
   min-period-hours: 24
   max-period-hours: 720

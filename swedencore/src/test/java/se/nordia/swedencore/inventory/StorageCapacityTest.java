@@ -20,7 +20,7 @@ class StorageCapacityTest extends CoreTest {
     protected CoreConfig configure(CoreConfig d) {
         return new CoreConfig(d.database(), d.economy(), d.skills(), d.companies(), d.contracts(), d.properties(), d.shops(),
                 d.settlements(), d.orders(), d.production(), d.loans(), d.leases(), new ItemStashService.Capacity(2, 3, 5),
-                d.defaultLocale(), d.shutdownOnDatabaseFailure());
+                d.shares(), d.defaultLocale(), d.shutdownOnDatabaseFailure());
     }
 
     private static List<ItemStashService.StashItem> stacks(int count) {

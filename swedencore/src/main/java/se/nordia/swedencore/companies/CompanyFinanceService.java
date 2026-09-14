@@ -27,7 +27,7 @@ public final class CompanyFinanceService {
     private static final Set<TransactionType> REFUNDS = Set.of(TransactionType.CONTRACT_REFUND, TransactionType.ORDER_REFUND);
     private static final Set<TransactionType> FINANCING = Set.of(
             TransactionType.COMPANY_DEPOSIT, TransactionType.COMPANY_WITHDRAWAL, TransactionType.LOAN_PRINCIPAL,
-            TransactionType.DISSOLUTION_PAYOUT);
+            TransactionType.DISSOLUTION_PAYOUT, TransactionType.SHARE_PURCHASE, TransactionType.DIVIDEND);
 
     public record IncomeStatement(int days, Money revenue, Money wages, Money purchasing, Money fees, Money otherCosts,
                                   Money operatingResult, Money financingIn, Money financingOut) {
@@ -98,7 +98,7 @@ public final class CompanyFinanceService {
             } else if (REFUNDS.contains(type)) {
                 purchasing -= in;
             } else if (type == TransactionType.CONTRACT_FEE || type == TransactionType.ORDER_FEE
-                    || type == TransactionType.COMPANY_REGISTRATION_FEE) {
+                    || type == TransactionType.COMPANY_REGISTRATION_FEE || type == TransactionType.SHARE_FEE) {
                 fees += out;
             } else {
                 // Sales, property deals, loan repayments received/paid, trades and anything else operational.
@@ -111,7 +111,8 @@ public final class CompanyFinanceService {
                 Money.ofOre(other), Money.ofOre(result), Money.ofOre(financingIn), Money.ofOre(financingOut));
     }
 
-    private BalanceSheet balance(Tx tx, long companyId) throws SQLException {
+    /** Balance sheet without permission checks (public information for valuation). */
+    public BalanceSheet balance(Tx tx, long companyId) throws SQLException {
         String id = Long.toString(companyId);
         Money cash = economy.findAccount(tx, AccountOwner.company(companyId), Account.MAIN).map(Account::balance).orElse(Money.ZERO);
         Money propertyValue = Money.ofOre(tx.queryLong(

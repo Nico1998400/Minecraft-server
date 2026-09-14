@@ -26,6 +26,7 @@ PostgreSQL 18 (dev via docker compose, tests via embedded PostgreSQL). Access th
 | V12 | `property_leases` (one open lease per property), `lease_payments` |
 | V13 | `transports` (pickup/delivery tokens); `TRANSPORT` account owner type (purposes `ESCROW`, `COLLATERAL`) |
 | V14 | `production_runs.facility`, `production_runs.outputs` (snapshot of total outputs) |
+| V15 | `share_holdings`, `share_offers`, `share_trades`, `dividends`; initial 1 000 shares for existing active companies |
 
 ## Global conventions
 
@@ -144,6 +145,15 @@ from pristine company stash rows at start (partial rows re-created with the item
 `facility` (FACTORY/INDUSTRIAL_LAND/FARM/MINE) scopes capacity; `outputs` (`MATERIAL:amount;…`) is written at start so
 recipe edits never change a running job (NULL only for pre-V14 runs, which fall back to the current recipe).
 Stash capacity is not a column: it is derived from occupied WAREHOUSE properties (see `ItemStashService.usage`).
+
+### share_holdings / share_offers / share_trades / dividends
+`share_holdings` (PK company, holder_type, holder_id; `quantity > 0`, rows deleted at zero). Holder types `PLAYER`
+(uuid text) and `TREASURY` (the company's own id). A company's total shares = holdings + `remaining` of OPEN offers —
+listed shares are moved out of the holding into the offer (escrow). `share_offers.status` OPEN → SOLD | CANCELLED |
+EXPIRED, `closed_at` set iff not OPEN, SOLD requires `remaining = 0`; `buyer_uuid` marks a private offer.
+`share_trades` is the price history (valuation); `dividends` enforces `total = per_share × shares`.
+Lock order for share operations: company row → offer row → holding → accounts. Holdings of closed companies are kept
+as history; queries filter on `companies.status = 'ACTIVE'`.
 
 ### loans / loan_payments / bankruptcies
 `loans`: lender and borrower (`PLAYER|COMPANY` + id, never equal), principal, total repayment, repaid, schedule

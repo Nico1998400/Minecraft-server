@@ -111,7 +111,7 @@ Changes are recorded as events (auditable, idempotent).
 - Roles (MVP): `OWNER`, `MANAGER` (can manage positions and applications), `EMPLOYEE`.
 - Max companies owned per player *(config: 3)*.
 - Growth is emergent (employees, money, contracts, reputation, assets) — **no arbitrary company levels**.
-- Architecture supports future bankruptcy (status `BANKRUPT`), shares and valuation — not implemented yet.
+- Bankruptcy, shares and valuation are implemented (§8, §8b).
 
 ## 8. Company risk
 
@@ -126,9 +126,31 @@ reputation once; `default-after-overdue-installments` overdue installments (or a
 **Bankruptcy (implemented):** a company that defaults — or whose owner declares voluntary bankruptcy while indebted —
 is wound down in one transaction: contracts and buy orders are cancelled (escrow returns), properties are seized back
 to the market (shops close), **wage arrears are paid first**, the remainder is shared pro rata among loan creditors,
-any residual after full payment goes to the owner, all staff are released, the company becomes BANKRUPT, the owner
-loses 15 reputation, and a `bankruptcies` record keeps the story. A defaulting *player* keeps paying from future
-income with a damaged reputation.
+any residual after full payment goes to the shareholders pro rata (§8b), all staff are released, the company becomes
+BANKRUPT, the owner loses 15 reputation, and a `bankruptcies` record keeps the story. A defaulting *player* keeps paying
+from future income with a damaged reputation.
+
+## 8b. Shares, dividends and valuation (P4)
+
+Ownership of a company's **value** is separate from **control** (the OWNER role, which does not move with shares).
+
+- **Founding:** every company starts with 1 000 shares held by the founder.
+- **Raising capital:** the owner issues new shares into the company *treasury* (dilution, max 1 000 000 in total) and
+  sells them through a treasury offer; buyers' money goes into the company account. No money is created.
+- **Trading:** any holder lists shares in an offer (price per share, optionally a named buyer). Listed shares are
+  escrowed so they cannot be sold twice; buyers may take part of an offer. The seller pays a 1 % fee that is destroyed,
+  so wash trading to fake a price costs money. There is no central exchange or order matching — offers are
+  peer-to-peer listings, in the spirit of "no auction house"; a real stock market (#43) can build on this later.
+- **Dividends:** the owner pays an amount from the company account, split equally per share among all shares outside
+  the treasury (listed shares included); undivisible öre stay in the company. Blocked while wages are owed.
+- **Protection of shareholders:** while anyone other than the owner holds shares, the owner **cannot withdraw** company
+  money — value leaves only through dividends, wages and normal business. When a company closes (dissolution, or
+  bankruptcy after every creditor was paid) the residual is split pro rata by shares; open share offers are cancelled.
+- **Valuation (never random):** `/shares info` shows equity from the balance sheet, book value per share, last trade
+  price, 30-day average price and volume, market cap (last price × shares outstanding) and recent dividends.
+
+Known limits (future governance, P5 courts): an owner can still move value to an accomplice through inflated
+contracts, purchases, loans or salaries. Reputation and public financial reports are the current deterrent.
 
 ## 9. Contracts
 
@@ -251,7 +273,8 @@ in the ledger, and never the best deal for goods players can supply.
 ## 13. Future phases (architecture-aware, not implemented)
 
 - **P3:** dynamic market prices, banking & loans, logistics & vehicles, warehouses, industry, company finance, bankruptcy.
-- **P4:** shares, shareholders, valuation from revenue/profit/assets/debt/reputation (never random), dividends.
+- **P4:** shares, dividends and valuation are implemented (§8b). Remaining: stock market / exchange (#43) and company
+  investments (#45, companies holding shares of other companies).
 - **P5:** crime (smuggling, theft, black markets), police, courts, government, elections, taxes, dynamic news from real
   events, player history.
 

@@ -41,6 +41,10 @@
 | `settlements` | Player-founded settlements and tier growth |
 | `trade` | Trade state machine and atomic trade completion |
 | `orders` | Buy orders |
+| `production` / `market` | Recipes at facility properties; 7-day market statistics |
+| `finance` | Loans, bankruptcy |
+| `logistics` | Transport jobs with collateral |
+| `shares` | Share registry, escrowed share offers, dividends, valuation, closing equity |
 | `player` | Registration and profiles |
 | `events` | Domain events published after commit |
 | `paper` | Everything that touches Bukkit/Paper/Adventure |
@@ -50,9 +54,12 @@ hooks (dissolution checks, ownership hooks, placement checks) instead of cyclic 
 
 ### Cross-module hooks
 Later modules must be able to veto or react to earlier ones without the earlier module knowing about them:
-`CompanyService.addDissolutionCheck` (contracts, properties, orders, leases), `PropertyService.addOwnershipChangeHook`
+`CompanyService.addDissolutionCheck` (contracts, properties, orders, leases, transports), `PropertyService.addOwnershipChangeHook`
 (leases end on a new owner), `PropertyService.addOccupancyChangeHook` (shops close when the occupant changes — sale,
-seizure, tenancy start/end), `CityService.addPlacementCheck` (settlements). Hooks run inside the caller's transaction.
+seizure, tenancy start/end), `CityService.addPlacementCheck` (settlements), `CompanyService.addFoundingHook` (initial
+shares), `CompanyService.addWithdrawalCheck` (shareholders block owner withdrawals) and
+`CompanyService.setEquityCloser` (shares decide who receives a closing company's residual in dissolution and solvent
+bankruptcy; the default pays the owner). Hooks run inside the caller's transaction.
 
 ## Key decisions and why
 

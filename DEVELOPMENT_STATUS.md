@@ -4,13 +4,13 @@ _Last updated: 2026-09-14_
 
 ## Current phase
 **P0, P1, P2 complete (MVP). P3 feature-complete:** market statistics, loans, bankruptcy, company finance, renting,
-logistics, warehouses and industry done. Next: P4 (shares).
+logistics, warehouses and industry done. **P4 in progress:** shares, dividends and valuation done.
 
 ## Environment verified
 - Paper 26.2 build 123 (STABLE) — requires Java 25
 - Java 25 (Temurin, auto-provisioned by Gradle toolchain); Gradle 9.7.1 wrapper
 - PostgreSQL 18 via `docker compose` for dev; embedded PostgreSQL 18 for tests (works on Windows, no Docker)
-- Plugin verified on a real Paper 26.2 server after every feature: loads, migrates (V1–V14), commands respond, clean shutdown
+- Plugin verified on a real Paper 26.2 server after every feature: loads, migrates (V1–V15), commands respond, clean shutdown
 - **Not verified with a real game client** (none available in the dev environment). Gameplay listeners and GUIs
   (XP from blocks, duty payroll, deliveries, shop chests, trade window, work sites, protection) are covered by domain
   tests only. First playtest should focus on: trade window clicks, shop purchase flow, work-site drops, protection.
@@ -55,14 +55,22 @@ logistics, warehouses and industry done. Next: P4 (shares).
       recipes forming cross-facility chains; runs snapshot their outputs (recipe edits cannot destroy goods)
 - [x] Vehicles (P3 #40): **decided not to build a custom system** — transport cargo is real items, so vanilla chest
       boats, minecart chests and pack animals already are the vehicles. Revisit only if playtests show a need.
-- [x] 181 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+
+### P4 — Financial world
+- [x] Shares (V15): 1 000 founder shares, treasury issuance, escrowed peer-to-peer share offers (public/private,
+      partial fills, 1 % burned fee), dividends per share, valuation (book value, last/average price, market cap),
+      shareholders block owner withdrawals and receive closing equity pro rata; `/shares` (`/aktier`)
+- [x] 189 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-2. **P4 — company valuation & shares** (P3 feature-complete): valuation from `CompanyFinanceService` (equity,
-   30-day operating result, reputation), share registry, dividends. Start with a design section in GAME_DESIGN.md
-   (share issuance, no money creation, trades via secure trade/escrow, dividend from company account).
-3. GUI menus for common flows (job board, company management) — optional polish.
+2. **P4 #45 company investments:** let companies hold shares of other companies (holder type `COMPANY`), with the
+   extraction risk in mind (a company buying an accomplice's shares at an inflated price). Consider a price guard
+   (e.g. max multiple of book value) or requiring no outside shareholders in the buying company.
+3. **P4 #43 stock market:** optional exchange view over share offers (best bid/ask per company, `/shares market`);
+   keep it peer-to-peer — no NPC market maker, no money creation.
+4. Show share holdings in `/profile` and dividends/share sales in `/company finance` (types already classified).
+5. GUI menus for common flows (job board, company management) — optional polish.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.
@@ -77,5 +85,9 @@ logistics, warehouses and industry done. Next: P4 (shares).
 - Stash capacity is not enforced on transport delivery, shop/trade fallbacks or refunds (by design: never lose items).
   A stash can therefore exceed capacity; it then only blocks new voluntary inflows until items are claimed.
 - Work-site output that overflows to the worker is not announced in chat yet.
+- Shares: an owner can still move value to an accomplice via inflated contracts, purchases, loans or salaries; only
+  direct withdrawals are blocked. Share purchases have no idempotency token (a repeated command buys again, as asked).
+- Shares: closing-equity payouts use one transfer per holder; a payout above `economy.max-transfer` would make the
+  dissolution fail (same limit as before shares).
 - Dev harness (not committed) drives the server console via redirected stdin; the first command is eaten by a BOM.
 - Windows PowerShell 5.1: commit messages containing double quotes break `git commit -m`; use `git commit -F file`.

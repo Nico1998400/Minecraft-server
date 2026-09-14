@@ -105,7 +105,11 @@ public final class CompanyService {
             }
             economy.getOrCreateAccount(tx, AccountOwner.company(id), Account.MAIN);
             tx.update("INSERT INTO company_employees (company_id, player_uuid, role) VALUES (?, ?, 'OWNER')", id, owner);
-            return find(tx, id).orElseThrow();
+            Company founded = find(tx, id).orElseThrow();
+            for (FoundingHook hook : foundingHooks) {
+                hook.founded(tx, founded);
+            }
+            return founded;
         });
         membershipChanged(company.id());
         return company;
@@ -249,6 +253,9 @@ public final class CompanyService {
             if (payroll.arrears(tx, companyId).isPositive()) {
                 throw DomainException.of("company.withdraw_blocked_by_arrears", "arrears", payroll.arrears(tx, companyId));
             }
+            for (DissolutionCheck check : withdrawalChecks) {
+                check.verify(tx, companyId);
+            }
             Account from = economy.requireAccount(tx, AccountOwner.company(companyId));
             Account to = economy.requireAccount(tx, AccountOwner.player(actor));
             return economy.transfer(tx, TransferRequest.of(from.id(), to.id(), amount, TransactionType.COMPANY_WITHDRAWAL)
@@ -349,11 +356,7 @@ public final class CompanyService {
             }
             Account companyAccount = economy.requireAccount(tx, AccountOwner.company(companyId));
             Money remaining = companyAccount.balance();
-            if (remaining.isPositive()) {
-                Account ownerAccount = economy.requireAccount(tx, AccountOwner.player(actor));
-                economy.transfer(tx, TransferRequest.of(companyAccount.id(), ownerAccount.id(), remaining, TransactionType.DISSOLUTION_PAYOUT)
-                        .withActor(actor).withReference("COMPANY", Long.toString(companyId)));
-            }
+            closeEquity(tx, find(tx, companyId).orElseThrow(), remaining, actor);
             tx.update("UPDATE job_applications SET status = 'CLOSED', decided_at = now() WHERE status = 'PENDING' AND position_id IN (SELECT id FROM job_positions WHERE company_id = ?)", companyId);
             tx.update("UPDATE job_positions SET status = 'CLOSED', closed_at = now() WHERE company_id = ? AND status = 'OPEN'", companyId);
             endMembership(tx, companyId, actor, "DISSOLVED");
@@ -384,9 +387,59 @@ public final class CompanyService {
     }
 
     private final List<DissolutionCheck> dissolutionChecks = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<DissolutionCheck> withdrawalChecks = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<FoundingHook> foundingHooks = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile EquityCloser equityCloser = CompanyService::payResidualToOwner;
 
     public void addDissolutionCheck(DissolutionCheck check) {
         dissolutionChecks.add(check);
+    }
+
+    /** Vetoes owner withdrawals (e.g. while outside shareholders exist). Runs with the company locked. */
+    public void addWithdrawalCheck(DissolutionCheck check) {
+        withdrawalChecks.add(check);
+    }
+
+    /** Runs inside the founding transaction (e.g. to issue the initial shares). */
+    @FunctionalInterface
+    public interface FoundingHook {
+        void founded(Tx tx, Company company) throws SQLException;
+    }
+
+    public void addFoundingHook(FoundingHook hook) {
+        foundingHooks.add(hook);
+    }
+
+    /**
+     * Decides who receives a closing company's remaining money (dissolution, or bankruptcy after all creditors were
+     * paid). Called with the company locked; {@code residual} may be zero, in which case only bookkeeping happens.
+     */
+    @FunctionalInterface
+    public interface EquityCloser {
+        void close(CompanyService companies, Tx tx, Company company, Money residual, UUID actor) throws SQLException;
+    }
+
+    public void setEquityCloser(EquityCloser closer) {
+        this.equityCloser = java.util.Objects.requireNonNull(closer);
+    }
+
+    public void closeEquity(Tx tx, Company company, Money residual, UUID actor) throws SQLException {
+        equityCloser.close(this, tx, company, residual, actor);
+    }
+
+    private static void payResidualToOwner(CompanyService companies, Tx tx, Company company, Money residual, UUID actor) throws SQLException {
+        companies.payFromCompany(tx, company.id(), AccountOwner.player(company.ownerUuid()), residual, actor, "dissolution:" + company.id());
+    }
+
+    /** Pays out closing equity from the company account (type DISSOLUTION_PAYOUT). No-op for non-positive amounts. */
+    public void payFromCompany(Tx tx, long companyId, AccountOwner to, Money amount, UUID actor, String idempotencyKey) throws SQLException {
+        if (!amount.isPositive()) {
+            return;
+        }
+        Account from = economy.requireAccount(tx, AccountOwner.company(companyId));
+        Account target = economy.requireAccount(tx, to);
+        economy.transfer(tx, new TransferRequest(from.id(), target.id(), amount, TransactionType.DISSOLUTION_PAYOUT, idempotencyKey,
+                actor, "COMPANY", Long.toString(companyId), null));
     }
 
     // ------------------------------------------------------------------ mapping

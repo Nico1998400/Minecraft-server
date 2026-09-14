@@ -28,6 +28,7 @@ public record CoreConfig(
         LoanService.Config loans,
         se.nordia.swedencore.properties.LeaseService.Config leases,
         se.nordia.swedencore.inventory.ItemStashService.Capacity storage,
+        se.nordia.swedencore.shares.ShareService.Config shares,
         SupportedLocale defaultLocale,
         boolean shutdownOnDatabaseFailure
 ) {
@@ -37,6 +38,7 @@ public record CoreConfig(
                 ContractConfig.defaults(), PropertyService.Config.defaults(), ShopService.Config.defaults(),
                 SettlementConfig.defaults(), BuyOrderService.Config.defaults(), ProductionService.Config.defaults(),
                 LoanService.Config.defaults(), se.nordia.swedencore.properties.LeaseService.Config.defaults(),
-                se.nordia.swedencore.inventory.ItemStashService.Capacity.defaults(), SupportedLocale.SV_SE, true);
+                se.nordia.swedencore.inventory.ItemStashService.Capacity.defaults(),
+                se.nordia.swedencore.shares.ShareService.Config.defaults(), SupportedLocale.SV_SE, true);
     }
 }

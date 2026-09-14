@@ -68,5 +68,11 @@ public enum TransactionType {
     /** The leader takes money from the settlement treasury. */
     SETTLEMENT_WITHDRAWAL,
     /** Moving a dissolved entity's remaining funds to its owner. */
-    DISSOLUTION_PAYOUT
+    DISSOLUTION_PAYOUT,
+    /** A buyer pays the seller (player or company treasury) for shares. */
+    SHARE_PURCHASE,
+    /** Share sale fee (sink). */
+    SHARE_FEE,
+    /** Company pays a dividend to a shareholder. */
+    DIVIDEND
 }
