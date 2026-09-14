@@ -72,8 +72,8 @@ public final class WorkSiteListener implements Listener {
             return;
         }
         Property property = access.property();
-        if (property.ownerType() != Property.OwnerType.COMPANY || !WORK_SITES.contains(property.type())
-                || !property.ownerId().equals(Long.toString(employee.companyId()))) {
+        if (property.occupantType() != Property.OwnerType.COMPANY || !WORK_SITES.contains(property.type())
+                || !property.occupantId().equals(Long.toString(employee.companyId()))) {
             return;
         }
         Key key = new Key(employee.companyId(), player.getUniqueId());

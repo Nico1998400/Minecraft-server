@@ -64,8 +64,8 @@ public final class ShopService {
         this.events = events;
         this.config = config;
         this.clock = clock;
-        properties.addOwnershipChangeHook((tx, propertyId) -> {
-            // A new owner does not inherit the previous owner's shop or its listings.
+        properties.addOccupancyChangeHook((tx, propertyId) -> {
+            // A new occupant (buyer or tenant) does not inherit the previous occupant's shop or its listings.
             tx.update("DELETE FROM shop_listings WHERE shop_id IN (SELECT id FROM shops WHERE property_id = ?)", propertyId);
             tx.update("UPDATE shops SET status = 'CLOSED' WHERE property_id = ?", propertyId);
         });
@@ -87,7 +87,7 @@ public final class ShopService {
             if (property.type() != Property.Type.SHOP) {
                 throw new DomainException("shop.not_shop_property");
             }
-            properties.requirePropertyOwner(tx, property, actor, CompanyRole.OWNER, CompanyRole.MANAGER);
+            properties.requireOccupant(tx, property, actor, CompanyRole.OWNER, CompanyRole.MANAGER);
             Optional<Long> existing = tx.queryOne("SELECT id FROM shops WHERE property_id = ?", rs -> rs.getLong(1), propertyId);
             long id;
             if (existing.isPresent()) {
@@ -283,8 +283,8 @@ public final class ShopService {
 
     public List<Shop> shopsOwnedBy(UUID player) {
         return database.inTransaction(tx -> tx.queryList(SHOP_SELECT + """
-                         WHERE (p.owner_type = 'PLAYER' AND p.owner_id = ?)
-                            OR (p.owner_type = 'COMPANY' AND p.owner_id IN (
+                         WHERE (COALESCE(le.tenant_type, p.owner_type) = 'PLAYER' AND COALESCE(le.tenant_id, p.owner_id) = ?)
+                            OR (COALESCE(le.tenant_type, p.owner_type) = 'COMPANY' AND COALESCE(le.tenant_id, p.owner_id) IN (
                                 SELECT company_id::text FROM company_employees
                                 WHERE player_uuid = ? AND ended_at IS NULL AND role IN ('OWNER', 'MANAGER')))
                          ORDER BY s.id""",
@@ -310,13 +310,19 @@ public final class ShopService {
 
     private void requireManager(Tx tx, Shop shop, UUID actor) throws SQLException {
         Property property = properties.find(tx, shop.propertyId()).orElseThrow();
-        properties.requirePropertyOwner(tx, property, actor, CompanyRole.OWNER, CompanyRole.MANAGER);
+        properties.requireOccupant(tx, property, actor, CompanyRole.OWNER, CompanyRole.MANAGER);
     }
 
+    /** The shop's owner is the property's occupant: the tenant while leased, otherwise the property owner. */
     private static final String SHOP_SELECT = """
-            SELECT s.*, p.name AS property_name, p.owner_type, p.owner_id, COALESCE(pl.name, co.name) AS owner_name, ci.name AS city_name
+            SELECT s.*, p.name AS property_name,
+                   COALESCE(le.tenant_type, p.owner_type) AS owner_type, COALESCE(le.tenant_id, p.owner_id) AS owner_id,
+                   COALESCE(tp.name, tc.name, pl.name, co.name) AS owner_name, ci.name AS city_name
             FROM shops s
             JOIN properties p ON p.id = s.property_id
+            LEFT JOIN property_leases le ON le.property_id = p.id AND le.status IN ('ACTIVE', 'OVERDUE')
+            LEFT JOIN players tp ON le.tenant_type = 'PLAYER' AND tp.uuid::text = le.tenant_id
+            LEFT JOIN companies tc ON le.tenant_type = 'COMPANY' AND tc.id::text = le.tenant_id
             LEFT JOIN players pl ON p.owner_type = 'PLAYER' AND pl.uuid::text = p.owner_id
             LEFT JOIN companies co ON p.owner_type = 'COMPANY' AND co.id::text = p.owner_id
             LEFT JOIN cities ci ON ci.id = p.city_id

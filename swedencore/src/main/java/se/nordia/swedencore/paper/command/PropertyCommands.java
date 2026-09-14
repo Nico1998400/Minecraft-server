@@ -71,6 +71,18 @@ public final class PropertyCommands {
                         .then(Commands.argument("id", LongArgumentType.longArg(1))
                                 .executes(c -> prepareBuy(c, false))
                                 .then(Commands.literal("company").executes(c -> prepareBuy(c, true)))))
+                .then(Commands.literal("rentals").executes(c -> rentals(c.getSource().getSender())))
+                .then(Commands.literal("rent-out").then(Commands.argument("id", LongArgumentType.longArg(1))
+                        .then(Commands.argument("rent", StringArgumentType.word())
+                                .then(Commands.argument("hours", IntegerArgumentType.integer(1, 8760)).executes(this::rentOut)))))
+                .then(Commands.literal("rent-cancel").then(Commands.argument("id", LongArgumentType.longArg(1)).executes(c -> leaseAction(c, "cancel"))))
+                .then(Commands.literal("move-out").then(Commands.argument("id", LongArgumentType.longArg(1)).executes(c -> leaseAction(c, "move-out"))))
+                .then(Commands.literal("end-lease").then(Commands.argument("id", LongArgumentType.longArg(1)).executes(c -> leaseAction(c, "end"))))
+                .then(Commands.literal("rent")
+                        .then(Commands.literal("confirm").executes(this::confirmRent))
+                        .then(Commands.argument("id", LongArgumentType.longArg(1))
+                                .executes(c -> prepareRent(c, false))
+                                .then(Commands.literal("company").executes(c -> prepareRent(c, true)))))
                 .then(Commands.literal("sell").then(Commands.argument("id", LongArgumentType.longArg(1))
                         .then(Commands.argument("price", StringArgumentType.word()).executes(this::sell))))
                 .then(Commands.literal("unlist").then(Commands.argument("id", LongArgumentType.longArg(1)).executes(this::unlist)))
@@ -140,6 +152,9 @@ public final class PropertyCommands {
                 "city", p.cityName() == null ? svc.messages().render(locale, "property.no_city") : Component.text(p.cityName()),
                 "owner", p.ownerName() == null ? "-" : p.ownerName(), "value", p.marketValue(),
                 "size", (r.maxX() - r.minX() + 1) + "×" + (r.maxZ() - r.minZ() + 1) + "×" + (r.maxY() - r.minY() + 1));
+        if (p.leased()) {
+            svc.messages().send(viewer, "lease.info.tenant", "tenant", p.tenantName());
+        }
         if (p.status() != Property.Status.OWNED) {
             viewer.sendMessage(svc.messages().render(locale, "property.info.for_sale", "id", p.id(), "price", p.price())
                     .clickEvent(ClickEvent.suggestCommand("/property buy " + p.id())));
@@ -231,6 +246,98 @@ public final class PropertyCommands {
             }
             return properties().buy(uuid, pending.targetId(), companyId, expected);
         }, p -> svc.messages().send(player, "property.bought", "name", p.name(), "price", p.price(), "owner", p.ownerName()));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    // ------------------------------------------------------------------ renting
+
+    private int rentals(CommandSender sender) {
+        svc.tasks().run(sender, () -> svc.core().leases().listings(10), list -> {
+            if (list.isEmpty()) {
+                svc.messages().send(sender, "lease.listings.empty");
+                return;
+            }
+            svc.messages().send(sender, "lease.listings.header");
+            for (var lease : list) {
+                sender.sendMessage(svc.messages().render(sender, "lease.listings.entry", "id", lease.propertyId(), "name", lease.propertyName(),
+                                "rent", lease.rent(), "hours", lease.periodHours())
+                        .clickEvent(ClickEvent.suggestCommand("/property rent " + lease.propertyId())));
+            }
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int rentOut(CommandContext<CommandSourceStack> c) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        long id = LongArgumentType.getLong(c, "id");
+        String rentInput = StringArgumentType.getString(c, "rent");
+        int hours = IntegerArgumentType.getInteger(c, "hours");
+        svc.tasks().run(player, () -> svc.core().leases().listForRent(uuid, id, Money.parsePositive(rentInput), hours),
+                lease -> svc.messages().send(player, "lease.listed", "name", lease.propertyName(), "rent", lease.rent(), "hours", lease.periodHours()));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int leaseAction(CommandContext<CommandSourceStack> c, String action) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        long id = LongArgumentType.getLong(c, "id");
+        svc.tasks().run(player, () -> {
+            switch (action) {
+                case "cancel" -> svc.core().leases().cancelListing(uuid, id);
+                case "move-out" -> svc.core().leases().endByTenant(uuid, id);
+                default -> svc.core().leases().endByOwner(uuid, id);
+            }
+            return action;
+        }, a -> svc.messages().send(player, "lease.action." + a.replace("-", "_"), "id", id));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int prepareRent(CommandContext<CommandSourceStack> c, boolean company) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        long id = LongArgumentType.getLong(c, "id");
+        svc.tasks().run(player, () -> svc.core().leases().openLease(id)
+                .filter(l -> l.status().equals("LISTED"))
+                .orElseThrow(() -> new DomainException("lease.not_listed")), lease -> {
+            svc.sessions().get(uuid).ifPresent(s -> s.pendingConfirmation(new PlayerSession.PendingConfirmation(
+                    "property-rent:" + lease.rent().ore() + ":" + company, id, System.currentTimeMillis() + CONFIRM_WINDOW_MILLIS)));
+            svc.messages().send(player, "lease.confirm", "name", lease.propertyName(), "rent", lease.rent(), "hours", lease.periodHours());
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int confirmRent(CommandContext<CommandSourceStack> c) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        PlayerSession session = svc.sessions().get(uuid).orElse(null);
+        PlayerSession.PendingConfirmation pending = session == null ? null : session.pendingConfirmation();
+        if (pending == null || !pending.action().startsWith("property-rent:") || System.currentTimeMillis() > pending.expiresAtMillis()) {
+            svc.messages().send(player, "company.dissolve.nothing_to_confirm");
+            return Command.SINGLE_SUCCESS;
+        }
+        session.pendingConfirmation(null);
+        String[] parts = pending.action().split(":");
+        Money expected = Money.ofOre(Long.parseLong(parts[1]));
+        boolean company = Boolean.parseBoolean(parts[2]);
+        Long selected = session.selectedCompanyId();
+        svc.tasks().run(player, () -> {
+            Long companyId = company ? (selected != null ? selected : svc.core().companies().resolveForActor(uuid, null, CompanyRole.OWNER).id()) : null;
+            return svc.core().leases().rent(uuid, pending.targetId(), companyId, expected);
+        }, lease -> svc.messages().send(player, "lease.rented", "name", lease.propertyName(), "tenant", lease.tenantName(),
+                "until", lease.paidUntil()));
         return Command.SINGLE_SUCCESS;
     }
 

@@ -54,6 +54,7 @@ public final class BankruptcyService {
     private final ContractService contracts;
     private final BuyOrderService orders;
     private final PropertyService properties;
+    private final se.nordia.swedencore.properties.LeaseService leases;
     private final ReputationService reputation;
     private final DomainEvents events;
     private final Clock clock;
@@ -61,6 +62,7 @@ public final class BankruptcyService {
 
     public BankruptcyService(Database database, EconomyService economy, CompanyService companies, PayrollService payroll,
                              ContractService contracts, BuyOrderService orders, PropertyService properties,
+                             se.nordia.swedencore.properties.LeaseService leases,
                              ReputationService reputation, DomainEvents events, Clock clock, int ownerReputationPenalty) {
         this.database = database;
         this.economy = economy;
@@ -69,6 +71,7 @@ public final class BankruptcyService {
         this.contracts = contracts;
         this.orders = orders;
         this.properties = properties;
+        this.leases = leases;
         this.reputation = reputation;
         this.events = events;
         this.clock = clock;
@@ -106,7 +109,8 @@ public final class BankruptcyService {
 
             contracts.closeAllForCompany(tx, companyId);
             orders.closeAllForCompany(tx, companyId);
-            List<Long> seized = properties.seizeAllForCompany(tx, companyId);
+            List<Long> seized = new java.util.ArrayList<>(leases.endAllForTenantCompany(tx, companyId));
+            seized.addAll(properties.seizeAllForCompany(tx, companyId));
 
             Account account = economy.requireAccount(tx, AccountOwner.company(companyId));
             Money assets = account.balance();

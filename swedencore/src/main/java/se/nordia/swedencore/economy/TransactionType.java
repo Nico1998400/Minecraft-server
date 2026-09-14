@@ -43,6 +43,8 @@ public enum TransactionType {
     ORDER_REFUND,
     /** Buy order listing fee (sink). */
     ORDER_FEE,
+    /** Rent from tenant to landlord. */
+    RENT,
     /** Loan principal paid out from lender to borrower. */
     LOAN_PRINCIPAL,
     /** Loan repayment from borrower to lender. */

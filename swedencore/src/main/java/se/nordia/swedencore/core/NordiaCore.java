@@ -6,6 +6,7 @@ import se.nordia.swedencore.companies.CompanyService;
 import se.nordia.swedencore.events.DomainEvents;
 import se.nordia.swedencore.finance.BankruptcyService;
 import se.nordia.swedencore.finance.LoanService;
+import se.nordia.swedencore.properties.LeaseService;
 import se.nordia.swedencore.properties.PropertyService;
 import se.nordia.swedencore.settlements.SettlementService;
 import se.nordia.swedencore.shops.ShopService;
@@ -53,6 +54,7 @@ public final class NordiaCore {
     private final CityService cities;
     private final PropertyService properties;
     private final ShopService shops;
+    private final LeaseService leases;
     private final SettlementService settlements;
     private final TradeService trades;
     private final BuyOrderService orders;
@@ -81,6 +83,7 @@ public final class NordiaCore {
         this.contracts = new ContractService(database, economy, companies, skills, reputation, stash, config.contracts(), clock);
         this.cities = new CityService(database, economy);
         this.properties = new PropertyService(database, economy, companies, cities, events, config.properties());
+        this.leases = new LeaseService(database, economy, companies, properties, reputation, events, LeaseService.Config.defaults(), clock);
         this.shops = new ShopService(database, economy, properties, events, config.shops(), clock);
         this.settlements = new SettlementService(database, economy, cities, events, config.settlements(), clock);
         this.trades = new TradeService(database, economy);
@@ -88,7 +91,7 @@ public final class NordiaCore {
         this.profiles = new ProfileService(database, economy, skills);
         this.production = new ProductionService(database, companies, stash, skills, config.production(), clock);
         this.market = new MarketService(database, clock, java.time.Duration.ofDays(7));
-        this.bankruptcy = new BankruptcyService(database, economy, companies, payroll, contracts, orders, properties, reputation,
+        this.bankruptcy = new BankruptcyService(database, economy, companies, payroll, contracts, orders, properties, leases, reputation,
                 events, clock, -15);
         this.loans = new LoanService(database, economy, companies, reputation, bankruptcy, config.loans(), clock);
         this.companyFinance = new CompanyFinanceService(database, economy, companies, payroll);
@@ -128,6 +131,10 @@ public final class NordiaCore {
 
     public SettlementService settlements() {
         return settlements;
+    }
+
+    public LeaseService leases() {
+        return leases;
     }
 
     public ShopService shops() {

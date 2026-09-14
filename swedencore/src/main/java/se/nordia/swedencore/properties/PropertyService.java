@@ -77,9 +77,16 @@ public final class PropertyService {
     }
 
     private final List<OwnershipChangeHook> ownershipHooks = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<OwnershipChangeHook> occupancyHooks = new java.util.concurrent.CopyOnWriteArrayList<>();
 
+    /** Runs when the owner changes (sale, seizure): e.g. leases end. */
     public void addOwnershipChangeHook(OwnershipChangeHook hook) {
         ownershipHooks.add(hook);
+    }
+
+    /** Runs when the occupant changes (owner change, tenancy start/end): e.g. the occupant's shop closes. */
+    public void addOccupancyChangeHook(OwnershipChangeHook hook) {
+        occupancyHooks.add(hook);
     }
 
     /** Locks and returns a property (for services acting on property-bound entities in their own transactions). */
@@ -207,9 +214,7 @@ public final class PropertyService {
                             VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     propertyId, property.ownerType(), property.ownerId(), buyerType, buyerId, property.price().ore(), transactionId);
             tx.update("DELETE FROM property_trusted WHERE property_id = ?", propertyId);
-            for (OwnershipChangeHook hook : ownershipHooks) {
-                hook.beforeOwnerChange(tx, propertyId);
-            }
+            runOwnerChangeHooks(tx, propertyId);
             tx.update("""
                             UPDATE properties SET owner_type = ?, owner_id = ?, status = 'OWNED', market_value = price, updated_at = now()
                             WHERE id = ?""",
@@ -231,9 +236,7 @@ public final class PropertyService {
         for (long id : ids) {
             lock(tx, id);
             tx.update("DELETE FROM property_trusted WHERE property_id = ?", id);
-            for (OwnershipChangeHook hook : ownershipHooks) {
-                hook.beforeOwnerChange(tx, id);
-            }
+            runOwnerChangeHooks(tx, id);
             tx.update("""
                     UPDATE properties SET owner_type = NULL, owner_id = NULL, status = 'AVAILABLE', price = market_value, updated_at = now()
                     WHERE id = ?""", id);
@@ -252,6 +255,9 @@ public final class PropertyService {
         Property result = database.inTransaction(tx -> {
             Property property = lock(tx, propertyId);
             requireOwner(tx, property, actor, CompanyRole.OWNER);
+            if (property.leased()) {
+                throw new DomainException("property.leased");
+            }
             tx.update("UPDATE properties SET status = 'FOR_SALE', price = ?, updated_at = now() WHERE id = ?", price.ore(), propertyId);
             return find(tx, propertyId).orElseThrow();
         });
@@ -337,8 +343,9 @@ public final class PropertyService {
 
     /** Access entries for properties owned by a company (refresh after membership changes). */
     public List<Access> accessForCompany(long companyId) {
-        return database.inTransaction(tx -> accessFor(tx, tx.queryList(SELECT + " WHERE p.owner_type = 'COMPANY' AND p.owner_id = ?",
-                PropertyService::map, Long.toString(companyId))));
+        return database.inTransaction(tx -> accessFor(tx, tx.queryList(SELECT
+                        + " WHERE (p.owner_type = 'COMPANY' AND p.owner_id = ?) OR (le.tenant_type = 'COMPANY' AND le.tenant_id = ?)",
+                PropertyService::map, Long.toString(companyId), Long.toString(companyId))));
     }
 
     private List<Access> accessFor(Tx tx, List<Property> properties) throws SQLException {
@@ -353,11 +360,12 @@ public final class PropertyService {
             companyStaff.computeIfAbsent(row.getKey(), k -> new HashSet<>()).add(row.getValue());
         }
         return properties.stream().map(p -> {
-            Set<UUID> allowed = new HashSet<>(trusted.getOrDefault(p.id(), Set.of()));
-            if (p.ownerType() == Property.OwnerType.PLAYER) {
-                allowed.add(UUID.fromString(p.ownerId()));
-            } else if (p.ownerType() == Property.OwnerType.COMPANY) {
-                allowed.addAll(companyStaff.getOrDefault(p.ownerId(), Set.of()));
+            // A tenant has exclusive use; the landlord's trusted players only apply while not leased.
+            Set<UUID> allowed = p.leased() ? new HashSet<>() : new HashSet<>(trusted.getOrDefault(p.id(), Set.of()));
+            if (p.occupantType() == Property.OwnerType.PLAYER) {
+                allowed.add(UUID.fromString(p.occupantId()));
+            } else if (p.occupantType() == Property.OwnerType.COMPANY) {
+                allowed.addAll(companyStaff.getOrDefault(p.occupantId(), Set.of()));
             }
             return new Access(p, Set.copyOf(allowed));
         }).toList();
@@ -382,22 +390,57 @@ public final class PropertyService {
         throw new DomainException("property.not_owner");
     }
 
-    private static final String SELECT = """
-            SELECT p.*, c.name AS city_name, COALESCE(pl.name, co.name) AS owner_name
+    static final String SELECT = """
+            SELECT p.*, c.name AS city_name, COALESCE(pl.name, co.name) AS owner_name,
+                   le.tenant_type, le.tenant_id, COALESCE(tp.name, tc.name) AS tenant_name
             FROM properties p
             LEFT JOIN cities c ON c.id = p.city_id
             LEFT JOIN players pl ON p.owner_type = 'PLAYER' AND pl.uuid::text = p.owner_id
             LEFT JOIN companies co ON p.owner_type = 'COMPANY' AND co.id::text = p.owner_id
+            LEFT JOIN property_leases le ON le.property_id = p.id AND le.status IN ('ACTIVE', 'OVERDUE')
+            LEFT JOIN players tp ON le.tenant_type = 'PLAYER' AND tp.uuid::text = le.tenant_id
+            LEFT JOIN companies tc ON le.tenant_type = 'COMPANY' AND tc.id::text = le.tenant_id
             """;
 
     static Property map(ResultSet rs) throws SQLException {
         String ownerType = rs.getString("owner_type");
+        String tenantType = rs.getString("tenant_type");
         return new Property(rs.getLong("id"), rs.getString("name"), Property.Type.valueOf(rs.getString("type")),
                 new Region(rs.getString("world"), rs.getInt("min_x"), rs.getInt("min_y"), rs.getInt("min_z"),
                         rs.getInt("max_x"), rs.getInt("max_y"), rs.getInt("max_z")),
                 Tx.nullableLong(rs, "city_id"), rs.getString("city_name"),
                 ownerType == null ? null : Property.OwnerType.valueOf(ownerType), rs.getString("owner_id"),
                 rs.getString("owner_name"), Property.Status.valueOf(rs.getString("status")),
-                Money.ofOre(rs.getLong("price")), Money.ofOre(rs.getLong("market_value")));
+                Money.ofOre(rs.getLong("price")), Money.ofOre(rs.getLong("market_value")),
+                tenantType == null ? null : Property.OwnerType.valueOf(tenantType), rs.getString("tenant_id"),
+                rs.getString("tenant_name"));
+    }
+
+    /** Throws unless the actor is the occupant (tenant if leased, else owner) or has a role in the occupying company. */
+    public void requireOccupant(Tx tx, Property property, UUID actor, CompanyRole... companyRoles) throws SQLException {
+        if (!property.owned()) {
+            throw new DomainException("property.not_owner");
+        }
+        if (property.occupantType() == Property.OwnerType.PLAYER) {
+            if (!property.occupantId().equals(actor.toString())) {
+                throw new DomainException("property.not_owner");
+            }
+            return;
+        }
+        companies.requireRole(tx, Long.parseLong(property.occupantId()), actor, companyRoles);
+    }
+
+    /** Runs occupancy change hooks (e.g. close the occupant's shop) inside the caller's transaction. */
+    public void runOccupancyHooks(Tx tx, long propertyId) throws SQLException {
+        for (OwnershipChangeHook hook : occupancyHooks) {
+            hook.beforeOwnerChange(tx, propertyId);
+        }
+    }
+
+    private void runOwnerChangeHooks(Tx tx, long propertyId) throws SQLException {
+        for (OwnershipChangeHook hook : ownershipHooks) {
+            hook.beforeOwnerChange(tx, propertyId);
+        }
+        runOccupancyHooks(tx, propertyId);
     }
 }

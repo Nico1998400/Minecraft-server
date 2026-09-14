@@ -114,8 +114,12 @@ public final class ProductionService {
             if (level < recipe.engineeringLevel()) {
                 throw DomainException.of("job.skill_too_low", "level", recipe.engineeringLevel(), "current", level, "skill", Skill.ENGINEERING);
             }
-            long factories = tx.queryLong("SELECT count(*) FROM properties WHERE owner_type = 'COMPANY' AND owner_id = ? AND type = 'FACTORY'",
-                    Long.toString(companyId));
+            // Factories the company occupies: owned (and not leased out) or rented.
+            long factories = tx.queryLong("""
+                    SELECT count(*) FROM properties p
+                    LEFT JOIN property_leases le ON le.property_id = p.id AND le.status IN ('ACTIVE', 'OVERDUE')
+                    WHERE p.type = 'FACTORY' AND COALESCE(le.tenant_type, p.owner_type) = 'COMPANY'
+                      AND COALESCE(le.tenant_id, p.owner_id) = ?""", Long.toString(companyId));
             if (factories == 0) {
                 throw new DomainException("production.no_factory");
             }

@@ -179,6 +179,23 @@ public final class SwedenCorePlugin extends JavaPlugin {
                 }), 1200L, 1200L);
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async("expire buy orders", () -> core.orders().expireDue()),
                 1300L, 1200L);
+        // ---- leases: collect rent every 5 minutes and tell tenants about overdue rent and evictions
+        getServer().getScheduler().runTaskTimer(this, () -> tasks.async(() -> core.leases().collectDue())
+                .whenComplete((outcomes, error) -> {
+                    if (error != null) {
+                        getLogger().log(Level.SEVERE, "Rent collection failed", Tasks.unwrap(error));
+                        return;
+                    }
+                    tasks.sync(() -> outcomes.stream()
+                            .filter(o -> !o.result().equals("PAID") && o.lease().tenantType() == se.nordia.swedencore.properties.Property.OwnerType.PLAYER)
+                            .forEach(o -> {
+                                Player tenant = getServer().getPlayer(UUID.fromString(o.lease().tenantId()));
+                                if (tenant != null) {
+                                    messages.send(tenant, "lease.notice." + o.result().toLowerCase(java.util.Locale.ROOT), "name", o.lease().propertyName());
+                                }
+                            }));
+                }), 3000L, 6000L);
+
         // ---- loans: collect due installments every 5 minutes; announce defaults and bankruptcies
         core.events().subscribe(event -> {
             if (event instanceof se.nordia.swedencore.events.DomainEvent.CompanyBankrupt bankrupt) {
