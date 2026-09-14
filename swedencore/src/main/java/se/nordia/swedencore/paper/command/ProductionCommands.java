@@ -70,7 +70,7 @@ public final class ProductionCommands {
         svc.core().production().config().recipes().values().stream()
                 .sorted(java.util.Comparator.comparing(ProductionService.Recipe::id))
                 .forEach(r -> svc.messages().send(sender, "production.recipes.entry", "id", r.id(), "inputs", materials(r.inputs()),
-                        "outputs", materials(r.outputs()), "seconds", r.seconds(), "level", r.engineeringLevel()));
+                        "outputs", materials(r.outputs()), "seconds", r.seconds(), "level", r.engineeringLevel(), "facility", r.facility()));
         return Command.SINGLE_SUCCESS;
     }
 

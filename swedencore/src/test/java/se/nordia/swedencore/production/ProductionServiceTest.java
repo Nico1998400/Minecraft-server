@@ -51,8 +51,13 @@ class ProductionServiceTest extends CoreTest {
     }
 
     private void buyFactory(int x) {
-        Property factory = core.properties().create("Fabrik " + x, Property.Type.FACTORY, Region.of("world", x, 0, 0, x + 10, 10, 10), Money.ofSek(10_000));
-        core.properties().buy(owner, factory.id(), company.id(), null);
+        buyFacility(Property.Type.FACTORY, x);
+    }
+
+    private void buyFacility(Property.Type type, int x) {
+        Property facility = core.properties().create(type.name().toLowerCase(java.util.Locale.ROOT) + " " + x, type,
+                Region.of("world", x, 0, 0, x + 10, 10, 10), Money.ofSek(10_000));
+        core.properties().buy(owner, facility.id(), company.id(), null);
     }
 
     private void give(String material, int amount, boolean pristine) {
@@ -86,7 +91,7 @@ class ProductionServiceTest extends CoreTest {
     void rulesForFactoriesInputsOperatorsAndCapacity() {
         give("RAW_IRON", 64, true);
         give("COAL", 64, true);
-        assertDomainError(() -> core.production().start(owner, company.id(), "iron_smelting", 1, CODEC), "production.no_factory");
+        assertDomainError(() -> core.production().start(owner, company.id(), "iron_smelting", 1, CODEC), "production.no_facility");
         buyFactory(0);
         assertDomainError(() -> core.production().start(owner, company.id(), "nope", 1, CODEC), "production.unknown_recipe");
         assertDomainError(() -> core.production().start(owner, company.id(), "iron_smelting", 17, CODEC), "production.invalid_batches");
@@ -129,5 +134,45 @@ class ProductionServiceTest extends CoreTest {
         core.production().completeDue(CODEC);
         assertThat(core.stash().summary(stash).stream().filter(s -> s.material().equals("IRON_PICKAXE")).findFirst().orElseThrow().stacks())
                 .isEqualTo(3);
+    }
+
+    @Test
+    void recipesNeedTheirFacilityTypeAndCapacityIsPerType() {
+        buyFactory(0);
+        give("COBBLESTONE", 64, true);
+        give("RAW_IRON", 64, true);
+        give("COAL", 8, true);
+        // A factory is not a mine.
+        assertDomainError(() -> core.production().start(owner, company.id(), "stone_crusher", 1, CODEC), "production.no_facility");
+        buyFacility(Property.Type.MINE, 100);
+        core.production().start(owner, company.id(), "iron_smelting", 1, CODEC);
+        core.production().start(owner, company.id(), "iron_smelting", 1, CODEC);
+        // Factory runs do not use mine capacity.
+        core.production().start(owner, company.id(), "stone_crusher", 2, CODEC);
+        core.production().start(owner, company.id(), "stone_crusher", 1, CODEC);
+        assertDomainError(() -> core.production().start(owner, company.id(), "stone_crusher", 1, CODEC), "production.capacity_full");
+
+        clock.advance(Duration.ofMinutes(5));
+        core.production().completeDue(CODEC);
+        assertThat(total("GRAVEL")).isEqualTo(24);
+        assertThat(total("COBBLESTONE")).isEqualTo(40);
+    }
+
+    @Test
+    void runsKeepTheirOutputsWhenRecipesChange() {
+        buyFactory(0);
+        give("RAW_IRON", 16, true);
+        give("COAL", 2, true);
+        var run = core.production().start(owner, company.id(), "iron_smelting", 2, CODEC);
+        // Simulate an old run whose snapshot is missing and a malformed one: both fall back to the recipe.
+        assertThat(ProductionService.decodeOutputs("IRON_INGOT:16")).containsEntry("IRON_INGOT", 16);
+        assertThat(ProductionService.decodeOutputs("iron;")).isNull();
+        assertThat(ProductionService.encodeOutputs(java.util.Map.of("SAND", 6, "FLINT", 2), 3)).isEqualTo("FLINT:6;SAND:18");
+
+        // Change the stored snapshot to prove completion uses it rather than the current recipe.
+        core.database().inTransactionVoid(tx -> tx.update("UPDATE production_runs SET outputs = 'IRON_INGOT:10' WHERE id = ?", run.id()));
+        clock.advance(Duration.ofMinutes(5));
+        core.production().completeDue(CODEC);
+        assertThat(total("IRON_INGOT")).isEqualTo(10);
     }
 }

@@ -165,15 +165,27 @@ Future: supplier agreements (recurring contracts), physical marketplaces (city-o
 
 ## 10b. Production (supply chains)
 
-Companies that own a **FACTORY** property run recipes from `production.yml` (smelting, glassworks, sawmill, bakery,
-toolworks …). Inputs come from the company inventory — typically filled by work sites, buy orders or contract
-deliveries — and outputs return there after `seconds × batches`, ready for shops, contracts or trades.
+Companies run recipes from `production.yml` at **facilities** — properties they occupy of the recipe's type:
+
+| Facility | Industry | Example recipes |
+|---|---|---|
+| FACTORY | manufacturing | smelting, glassworks, sawmill, toolworks, rail works |
+| INDUSTRIAL_LAND | heavy industry | brickworks, charcoal kiln, concrete mixing |
+| MINE | extraction processing | stone crusher (cobble → gravel), gravel sifting (→ sand + flint) |
+| FARM | food & agriculture | bakery, sugar mill, composting |
+
+Inputs come from the company inventory — typically filled by work sites, buy orders or contract deliveries — and
+outputs return there after `seconds × batches`, ready for shops, contracts or trades. Recipes chain across facility
+types (mine → gravel → sand → factory glassworks; industrial concrete needs mine sand and gravel), so specialised
+companies trade intermediate goods with each other instead of each doing everything.
 
 - Operator: owner, manager or an employee in an **ENGINEER** position with the recipe's Engineering level. The operator
   earns Engineering XP — the skill's primary source.
-- Capacity: `runs-per-factory` concurrent runs per owned factory. More factories ⇒ more output: property investment
-  is how companies scale production.
-- Only pristine stacks are consumed; inputs are taken atomically when the run starts.
+- Capacity: `runs-per-facility` concurrent runs per occupied facility, counted per facility type. More facilities ⇒
+  more output: property investment is how companies scale production.
+- Only pristine stacks are consumed; inputs are taken atomically when the run starts, together with reserving stash
+  space for the outputs. Each run stores its outputs, so editing recipes never changes what a running job yields.
+- No recipe creates items from nothing and no chain of recipes is a cycle that grows a material.
 
 This completes the first full chain: miners (work site) → raw ore in company inventory → factory run by an engineer →
 ingots → toolworks → tools in a shop chest → bought by players.

@@ -1,60 +1,139 @@
 # ─────────────────────────────────────────────────────────────
-#  SwedenCore — production recipes
-#  Companies run recipes at FACTORY properties. Inputs are taken from the company inventory (/stash company),
-#  outputs are delivered there after seconds × batches. The operator (owner, manager or ENGINEER employee) needs the
+#  SwedenCore — production recipes (industry)
+#  Companies run recipes at a facility: a property of type FACTORY, INDUSTRIAL_LAND, FARM or MINE that the company
+#  owns (and has not leased out) or rents. Inputs are taken from the company inventory (/stash company), outputs are
+#  delivered there after seconds × batches. The operator (owner, manager or ENGINEER employee) needs the
 #  Engineering level and earns xp-per-batch Engineering XP.
+#
+#  Supply chain examples:
+#    MINE     cobblestone → gravel → sand + flint
+#    INDUSTRIAL_LAND sand + gravel → concrete powder; logs → charcoal (fuel); clay → bricks
+#    FACTORY  raw ore → ingots → tools and rails; sand → glass
+#    FARM     wheat → bread; sugar cane → sugar; seeds → bone meal
+#  Editing a recipe never affects runs already in progress: each run stores its own outputs.
 # ─────────────────────────────────────────────────────────────
 
-# Concurrent runs allowed per owned factory property.
-runs-per-factory: 2
+# Concurrent runs allowed per facility property (counted separately per facility type).
+runs-per-facility: 2
 max-batches: 16
 
 recipes:
+  # ── FACTORY ──
   iron_smelting:
+    facility: FACTORY
     inputs: { RAW_IRON: 8, COAL: 1 }
     outputs: { IRON_INGOT: 8 }
     seconds: 60
     engineering-level: 1
     xp-per-batch: 20
   copper_smelting:
+    facility: FACTORY
     inputs: { RAW_COPPER: 8, COAL: 1 }
     outputs: { COPPER_INGOT: 8 }
     seconds: 60
     engineering-level: 1
     xp-per-batch: 15
   gold_smelting:
+    facility: FACTORY
     inputs: { RAW_GOLD: 8, COAL: 1 }
     outputs: { GOLD_INGOT: 8 }
     seconds: 90
     engineering-level: 10
     xp-per-batch: 30
   glassworks:
+    facility: FACTORY
     inputs: { SAND: 8, COAL: 1 }
     outputs: { GLASS: 8 }
     seconds: 60
     engineering-level: 1
     xp-per-batch: 15
   stoneworks:
+    facility: FACTORY
     inputs: { COBBLESTONE: 8, COAL: 1 }
     outputs: { STONE: 8 }
     seconds: 45
     engineering-level: 1
     xp-per-batch: 10
   sawmill:
+    facility: FACTORY
     inputs: { OAK_LOG: 4 }
     outputs: { OAK_PLANKS: 18 }
     seconds: 30
     engineering-level: 1
     xp-per-batch: 10
-  bakery:
-    inputs: { WHEAT: 9 }
-    outputs: { BREAD: 4 }
-    seconds: 60
-    engineering-level: 5
-    xp-per-batch: 15
   toolworks:
+    facility: FACTORY
     inputs: { IRON_INGOT: 3, STICK: 2 }
     outputs: { IRON_PICKAXE: 1 }
     seconds: 120
     engineering-level: 20
     xp-per-batch: 60
+  rail_works:
+    facility: FACTORY
+    inputs: { IRON_INGOT: 6, STICK: 1 }
+    outputs: { RAIL: 16 }
+    seconds: 90
+    engineering-level: 15
+    xp-per-batch: 40
+
+  # ── INDUSTRIAL_LAND ──
+  brickworks:
+    facility: INDUSTRIAL_LAND
+    inputs: { CLAY_BALL: 8, COAL: 1 }
+    outputs: { BRICK: 8 }
+    seconds: 60
+    engineering-level: 5
+    xp-per-batch: 15
+  charcoal_kiln:
+    facility: INDUSTRIAL_LAND
+    inputs: { OAK_LOG: 8 }
+    outputs: { CHARCOAL: 8 }
+    seconds: 90
+    engineering-level: 1
+    xp-per-batch: 10
+  concrete_mixing:
+    facility: INDUSTRIAL_LAND
+    inputs: { SAND: 4, GRAVEL: 4, WHITE_DYE: 1 }
+    outputs: { WHITE_CONCRETE_POWDER: 8 }
+    seconds: 60
+    engineering-level: 10
+    xp-per-batch: 20
+
+  # ── MINE ──
+  stone_crusher:
+    facility: MINE
+    inputs: { COBBLESTONE: 8 }
+    outputs: { GRAVEL: 8 }
+    seconds: 45
+    engineering-level: 1
+    xp-per-batch: 10
+  gravel_sifting:
+    facility: MINE
+    inputs: { GRAVEL: 8 }
+    outputs: { SAND: 6, FLINT: 2 }
+    seconds: 45
+    engineering-level: 5
+    xp-per-batch: 12
+
+  # ── FARM ──
+  bakery:
+    facility: FARM
+    inputs: { WHEAT: 9 }
+    outputs: { BREAD: 4 }
+    seconds: 60
+    engineering-level: 5
+    xp-per-batch: 15
+  sugar_mill:
+    facility: FARM
+    inputs: { SUGAR_CANE: 8 }
+    outputs: { SUGAR: 9 }
+    seconds: 45
+    engineering-level: 1
+    xp-per-batch: 8
+  composting:
+    facility: FARM
+    inputs: { WHEAT_SEEDS: 16 }
+    outputs: { BONE_MEAL: 3 }
+    seconds: 60
+    engineering-level: 1
+    xp-per-batch: 5

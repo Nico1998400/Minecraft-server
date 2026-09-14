@@ -6,6 +6,7 @@ import se.nordia.swedencore.core.DomainException;
 import se.nordia.swedencore.database.Database;
 import se.nordia.swedencore.database.Tx;
 import se.nordia.swedencore.inventory.ItemStashService;
+import se.nordia.swedencore.properties.Property;
 import se.nordia.swedencore.skills.Skill;
 import se.nordia.swedencore.skills.SkillService;
 
@@ -21,22 +22,42 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Industrial production: companies turn raw materials from their inventory into goods at FACTORY properties.
+ * Industrial production: companies turn raw materials from their inventory into goods at industrial properties.
  *
- * <p>A run consumes all inputs up front (atomically), takes {@code seconds × batches}, then deposits the outputs
- * into the company inventory and rewards the operator with Engineering XP. Capacity scales with the number of
- * factories a company owns — investing in property increases output, the core company growth loop.
+ * <p>Each recipe runs at a facility type (factory, industrial land, farm or mine). A run consumes all inputs up front
+ * (atomically), takes {@code seconds × batches}, then deposits the outputs into the company inventory and rewards the
+ * operator with Engineering XP. Capacity per facility type scales with the number of such properties the company
+ * occupies — investing in property increases output, the core company growth loop.
  */
 public final class ProductionService {
 
+    /** Property types that can host production. */
+    public static final java.util.Set<Property.Type> FACILITIES =
+            java.util.EnumSet.of(Property.Type.FACTORY, Property.Type.INDUSTRIAL_LAND, Property.Type.FARM, Property.Type.MINE);
+
     public record Recipe(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, int seconds,
-                         int engineeringLevel, long xpPerBatch) {
+                         int engineeringLevel, long xpPerBatch, Property.Type facility) {
         public Recipe {
             inputs = Map.copyOf(inputs);
             outputs = Map.copyOf(outputs);
-            if (inputs.isEmpty() || outputs.isEmpty() || seconds < 1 || engineeringLevel < 1 || xpPerBatch < 0) {
+            if (inputs.isEmpty() || outputs.isEmpty() || seconds < 1 || engineeringLevel < 1 || xpPerBatch < 0
+                    || facility == null || !FACILITIES.contains(facility)) {
                 throw new IllegalArgumentException("Invalid recipe " + id);
             }
+            for (var amount : inputs.values()) {
+                if (amount < 1 || amount > 1_000) {
+                    throw new IllegalArgumentException("Invalid input amount in recipe " + id);
+                }
+            }
+            for (var amount : outputs.values()) {
+                if (amount < 1 || amount > 1_000) {
+                    throw new IllegalArgumentException("Invalid output amount in recipe " + id);
+                }
+            }
+        }
+
+        public Recipe(String id, Map<String, Integer> inputs, Map<String, Integer> outputs, int seconds, int engineeringLevel, long xpPerBatch) {
+            this(id, inputs, outputs, seconds, engineeringLevel, xpPerBatch, Property.Type.FACTORY);
         }
     }
 
@@ -56,8 +77,21 @@ public final class ProductionService {
             recipes.put("glassworks", new Recipe("glassworks", Map.of("SAND", 8, "COAL", 1), Map.of("GLASS", 8), 60, 1, 15));
             recipes.put("stoneworks", new Recipe("stoneworks", Map.of("COBBLESTONE", 8, "COAL", 1), Map.of("STONE", 8), 45, 1, 10));
             recipes.put("sawmill", new Recipe("sawmill", Map.of("OAK_LOG", 4), Map.of("OAK_PLANKS", 18), 30, 1, 10));
-            recipes.put("bakery", new Recipe("bakery", Map.of("WHEAT", 9), Map.of("BREAD", 4), 60, 5, 15));
             recipes.put("toolworks", new Recipe("toolworks", Map.of("IRON_INGOT", 3, "STICK", 2), Map.of("IRON_PICKAXE", 1), 120, 20, 60));
+            recipes.put("rail_works", new Recipe("rail_works", Map.of("IRON_INGOT", 6, "STICK", 1), Map.of("RAIL", 16), 90, 15, 40));
+            recipes.put("brickworks", new Recipe("brickworks", Map.of("CLAY_BALL", 8, "COAL", 1), Map.of("BRICK", 8), 60, 5, 15,
+                    Property.Type.INDUSTRIAL_LAND));
+            recipes.put("charcoal_kiln", new Recipe("charcoal_kiln", Map.of("OAK_LOG", 8), Map.of("CHARCOAL", 8), 90, 1, 10,
+                    Property.Type.INDUSTRIAL_LAND));
+            recipes.put("concrete_mixing", new Recipe("concrete_mixing", Map.of("SAND", 4, "GRAVEL", 4, "WHITE_DYE", 1),
+                    Map.of("WHITE_CONCRETE_POWDER", 8), 60, 10, 20, Property.Type.INDUSTRIAL_LAND));
+            recipes.put("stone_crusher", new Recipe("stone_crusher", Map.of("COBBLESTONE", 8), Map.of("GRAVEL", 8), 45, 1, 10,
+                    Property.Type.MINE));
+            recipes.put("gravel_sifting", new Recipe("gravel_sifting", Map.of("GRAVEL", 8), Map.of("SAND", 6, "FLINT", 2), 45, 5, 12,
+                    Property.Type.MINE));
+            recipes.put("bakery", new Recipe("bakery", Map.of("WHEAT", 9), Map.of("BREAD", 4), 60, 5, 15, Property.Type.FARM));
+            recipes.put("sugar_mill", new Recipe("sugar_mill", Map.of("SUGAR_CANE", 8), Map.of("SUGAR", 9), 45, 1, 8, Property.Type.FARM));
+            recipes.put("composting", new Recipe("composting", Map.of("WHEAT_SEEDS", 16), Map.of("BONE_MEAL", 3), 60, 1, 5, Property.Type.FARM));
             return new Config(recipes, 2, 16);
         }
     }
@@ -114,18 +148,20 @@ public final class ProductionService {
             if (level < recipe.engineeringLevel()) {
                 throw DomainException.of("job.skill_too_low", "level", recipe.engineeringLevel(), "current", level, "skill", Skill.ENGINEERING);
             }
-            // Factories the company occupies: owned (and not leased out) or rented.
-            long factories = tx.queryLong("""
+            // Facilities of the recipe's type the company occupies: owned (and not leased out) or rented.
+            long facilities = tx.queryLong("""
                     SELECT count(*) FROM properties p
                     LEFT JOIN property_leases le ON le.property_id = p.id AND le.status IN ('ACTIVE', 'OVERDUE')
-                    WHERE p.type = 'FACTORY' AND COALESCE(le.tenant_type, p.owner_type) = 'COMPANY'
-                      AND COALESCE(le.tenant_id, p.owner_id) = ?""", Long.toString(companyId));
-            if (factories == 0) {
-                throw new DomainException("production.no_factory");
+                    WHERE p.type = ? AND COALESCE(le.tenant_type, p.owner_type) = 'COMPANY'
+                      AND COALESCE(le.tenant_id, p.owner_id) = ?""", recipe.facility(), Long.toString(companyId));
+            if (facilities == 0) {
+                throw DomainException.of("production.no_facility", "facility", recipe.facility());
             }
-            long running = tx.queryLong("SELECT count(*) FROM production_runs WHERE company_id = ? AND status = 'RUNNING'", companyId);
-            if (running >= factories * config.runsPerFactory()) {
-                throw DomainException.of("production.capacity_full", "capacity", factories * config.runsPerFactory());
+            long running = tx.queryLong("SELECT count(*) FROM production_runs WHERE company_id = ? AND facility = ? AND status = 'RUNNING'",
+                    companyId, recipe.facility());
+            if (running >= facilities * config.runsPerFactory()) {
+                throw DomainException.of("production.capacity_full", "capacity", facilities * config.runsPerFactory(),
+                        "facility", recipe.facility());
             }
             Map<String, Integer> inputs = new HashMap<>();
             recipe.inputs().forEach((material, amount) -> inputs.put(material, Math.multiplyExact(amount, batches)));
@@ -141,9 +177,10 @@ public final class ProductionService {
             Instant now = clock.instant();
             Instant finishes = now.plus(Duration.ofSeconds((long) recipe.seconds() * batches));
             long id = tx.queryLong("""
-                            INSERT INTO production_runs (company_id, recipe, batches, operator_uuid, xp, started_at, finishes_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id""",
-                    companyId, recipe.id(), batches, operator, recipe.xpPerBatch() * batches, now, finishes);
+                            INSERT INTO production_runs (company_id, recipe, batches, operator_uuid, xp, started_at, finishes_at, facility, outputs)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+                    companyId, recipe.id(), batches, operator, recipe.xpPerBatch() * batches, now, finishes, recipe.facility(),
+                    encodeOutputs(recipe.outputs(), batches));
             return new Run(id, companyId, recipe.id(), batches, operator, false, finishes);
         });
     }
@@ -162,26 +199,69 @@ public final class ProductionService {
     }
 
     private Optional<Run> complete(Tx tx, long id, ItemStashService.ItemCodec codec) throws SQLException {
-        record Row(long companyId, String recipe, int batches, UUID operator, String status, long xp, Instant finishes) {
+        record Row(long companyId, String recipe, int batches, UUID operator, String status, long xp, Instant finishes, String outputs) {
         }
         Row row = tx.queryOne("SELECT * FROM production_runs WHERE id = ? FOR UPDATE",
                 rs -> new Row(rs.getLong("company_id"), rs.getString("recipe"), rs.getInt("batches"), Tx.uuid(rs, "operator_uuid"),
-                        rs.getString("status"), rs.getLong("xp"), Tx.instant(rs, "finishes_at")), id).orElseThrow();
+                        rs.getString("status"), rs.getLong("xp"), Tx.instant(rs, "finishes_at"), rs.getString("outputs")), id).orElseThrow();
         if (!"RUNNING".equals(row.status()) || row.finishes().isAfter(clock.instant())) {
             return Optional.empty();
         }
-        Recipe recipe = config.recipes().get(row.recipe());
-        if (recipe != null) {
-            for (Map.Entry<String, Integer> output : recipe.outputs().entrySet()) {
-                stash.depositPristine(tx, ItemStashService.Owner.company(row.companyId()), output.getKey(),
-                        Math.multiplyExact(output.getValue(), row.batches()), codec, "PRODUCTION", Long.toString(id));
+        // Prefer the snapshot taken at start; runs from before V14 fall back to the current recipe.
+        Map<String, Integer> outputs = row.outputs() != null ? decodeOutputs(row.outputs()) : null;
+        if (outputs == null) {
+            Recipe recipe = config.recipes().get(row.recipe());
+            outputs = new java.util.TreeMap<>();
+            if (recipe != null) {
+                for (Map.Entry<String, Integer> output : recipe.outputs().entrySet()) {
+                    outputs.put(output.getKey(), Math.multiplyExact(output.getValue(), row.batches()));
+                }
             }
+        }
+        for (Map.Entry<String, Integer> output : outputs.entrySet()) {
+            stash.depositPristine(tx, ItemStashService.Owner.company(row.companyId()), output.getKey(), output.getValue(), codec,
+                    "PRODUCTION", Long.toString(id));
         }
         if (row.xp() > 0) {
             skills.addXp(tx, row.operator(), Skill.ENGINEERING, Math.min(row.xp(), 1_000_000));
         }
         tx.update("UPDATE production_runs SET status = 'COMPLETED', completed_at = now() WHERE id = ?", id);
         return Optional.of(new Run(id, row.companyId(), row.recipe(), row.batches(), row.operator(), true, row.finishes()));
+    }
+
+    /** Total output amounts for a run, e.g. {@code "GRAVEL:64;SAND:48"}. Materials match {@link ItemStashService#MATERIAL}. */
+    static String encodeOutputs(Map<String, Integer> perBatch, int batches) {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, Integer> output : new java.util.TreeMap<>(perBatch).entrySet()) {
+            if (!sb.isEmpty()) {
+                sb.append(';');
+            }
+            sb.append(output.getKey()).append(':').append(Math.multiplyExact(output.getValue(), batches));
+        }
+        return sb.toString();
+    }
+
+    /** Returns null if the snapshot is malformed, so the caller can fall back to the recipe. */
+    static Map<String, Integer> decodeOutputs(String encoded) {
+        Map<String, Integer> outputs = new java.util.TreeMap<>();
+        for (String part : encoded.split(";")) {
+            int colon = part.indexOf(':');
+            if (colon <= 0) {
+                return null;
+            }
+            String material = part.substring(0, colon);
+            int amount;
+            try {
+                amount = Integer.parseInt(part.substring(colon + 1));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+            if (!ItemStashService.MATERIAL.matcher(material).matches() || amount < 1) {
+                return null;
+            }
+            outputs.merge(material, amount, Math::addExact);
+        }
+        return outputs.isEmpty() ? null : outputs;
     }
 
     public List<Run> runs(long companyId, int limit) {

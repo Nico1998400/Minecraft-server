@@ -113,6 +113,9 @@ public final class Messages {
         if (value instanceof Skill skill) {
             return Placeholder.component(name, render(locale, "skill." + skill.name()));
         }
+        if (value instanceof se.nordia.swedencore.properties.Property.Type type) {
+            return Placeholder.component(name, render(locale, "property.type." + type.name()));
+        }
         return Placeholder.unparsed(name, format(locale, value));
     }
 

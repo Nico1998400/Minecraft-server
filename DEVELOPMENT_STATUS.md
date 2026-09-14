@@ -3,14 +3,14 @@
 _Last updated: 2026-09-14_
 
 ## Current phase
-**P0, P1, P2 complete (MVP). P3 in progress:** market statistics, loans, bankruptcy, company finance, renting and
-logistics and warehouses done.
+**P0, P1, P2 complete (MVP). P3 feature-complete:** market statistics, loans, bankruptcy, company finance, renting,
+logistics, warehouses and industry done. Next: P4 (shares).
 
 ## Environment verified
 - Paper 26.2 build 123 (STABLE) — requires Java 25
 - Java 25 (Temurin, auto-provisioned by Gradle toolchain); Gradle 9.7.1 wrapper
 - PostgreSQL 18 via `docker compose` for dev; embedded PostgreSQL 18 for tests (works on Windows, no Docker)
-- Plugin verified on a real Paper 26.2 server after every feature: loads, migrates (V1–V9), commands respond, clean shutdown
+- Plugin verified on a real Paper 26.2 server after every feature: loads, migrates (V1–V14), commands respond, clean shutdown
 - **Not verified with a real game client** (none available in the dev environment). Gameplay listeners and GUIs
   (XP from blocks, duty payroll, deliveries, shop chests, trade window, work sites, protection) are covered by domain
   tests only. First playtest should focus on: trade window clicks, shop purchase flow, work-site drops, protection.
@@ -51,14 +51,18 @@ logistics and warehouses done.
 - [x] Logistics (V13): transport jobs with physical pickup/delivery, collateral, Logistics XP; `/transports`, `/transport`
 - [x] Warehouses: stash capacity in stacks (config `storage`), +1 080 per occupied WAREHOUSE; enforced on voluntary
       inflows under a per-stash advisory lock; `/stash` shows used/capacity
-- [x] 179 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+- [x] Industry (V14): recipes run at FACTORY / INDUSTRIAL_LAND / MINE / FARM facilities with per-type capacity; 16
+      recipes forming cross-facility chains; runs snapshot their outputs (recipe edits cannot destroy goods)
+- [x] Vehicles (P3 #40): **decided not to build a custom system** — transport cargo is real items, so vanilla chest
+      boats, minecart chests and pack animals already are the vehicles. Revisit only if playtests show a need.
+- [x] 181 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-2. **Vehicles (P3 #40)** — optional; could reuse minecart/boat entities with cargo capacity for transports.
-3. **P4 — company valuation & shares** (only once P3 is stable): valuation from `CompanyFinanceService` (equity,
-   30-day operating result, reputation), share registry, dividends.
-4. GUI menus for common flows (job board, company management) — optional polish.
+2. **P4 — company valuation & shares** (P3 feature-complete): valuation from `CompanyFinanceService` (equity,
+   30-day operating result, reputation), share registry, dividends. Start with a design section in GAME_DESIGN.md
+   (share issuance, no money creation, trades via secure trade/escrow, dividend from company account).
+3. GUI menus for common flows (job board, company management) — optional polish.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.

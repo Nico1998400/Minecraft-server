@@ -25,6 +25,7 @@ PostgreSQL 18 (dev via docker compose, tests via embedded PostgreSQL). Access th
 | V11 | `loans`, `loan_payments`, `bankruptcies`; `BANKRUPTCY` employee end reason |
 | V12 | `property_leases` (one open lease per property), `lease_payments` |
 | V13 | `transports` (pickup/delivery tokens); `TRANSPORT` account owner type (purposes `ESCROW`, `COLLATERAL`) |
+| V14 | `production_runs.facility`, `production_runs.outputs` (snapshot of total outputs) |
 
 ## Global conventions
 
@@ -140,6 +141,9 @@ Each fill has a unique `token`, the quantity and payout.
 ### production_runs
 Company, recipe id, batches, operator, `RUNNING|COMPLETED`, `finishes_at` (from the service clock). Inputs are consumed
 from pristine company stash rows at start (partial rows re-created with the item codec); outputs deposited on completion.
+`facility` (FACTORY/INDUSTRIAL_LAND/FARM/MINE) scopes capacity; `outputs` (`MATERIAL:amount;…`) is written at start so
+recipe edits never change a running job (NULL only for pre-V14 runs, which fall back to the current recipe).
+Stash capacity is not a column: it is derived from occupied WAREHOUSE properties (see `ItemStashService.usage`).
 
 ### loans / loan_payments / bankruptcies
 `loans`: lender and borrower (`PLAYER|COMPANY` + id, never equal), principal, total repayment, repaid, schedule

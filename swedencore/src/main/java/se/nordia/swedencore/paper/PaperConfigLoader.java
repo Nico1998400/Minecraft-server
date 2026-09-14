@@ -57,14 +57,15 @@ public final class PaperConfigLoader {
                 try {
                     recipes.put(id.toLowerCase(java.util.Locale.ROOT), new ProductionService.Recipe(id.toLowerCase(java.util.Locale.ROOT),
                             materials(r.getConfigurationSection("inputs")), materials(r.getConfigurationSection("outputs")),
-                            r.getInt("seconds", 60), r.getInt("engineering-level", 1), r.getLong("xp-per-batch", 10)));
+                            r.getInt("seconds", 60), r.getInt("engineering-level", 1), r.getLong("xp-per-batch", 10),
+                            se.nordia.swedencore.properties.Property.Type.valueOf(r.getString("facility", "FACTORY").toUpperCase(java.util.Locale.ROOT))));
                 } catch (IllegalArgumentException e) {
                     logger.warning("production.yml: invalid recipe " + id + ": " + e.getMessage());
                 }
             }
         }
-        return new ProductionService.Config(recipes, file.getInt("runs-per-factory", defaults.runsPerFactory()),
-                file.getInt("max-batches", defaults.maxBatches()));
+        int runsPerFacility = file.getInt("runs-per-facility", file.getInt("runs-per-factory", defaults.runsPerFactory()));
+        return new ProductionService.Config(recipes, runsPerFacility, file.getInt("max-batches", defaults.maxBatches()));
     }
 
     private static Map<String, Integer> materials(ConfigurationSection section) {
