@@ -66,6 +66,13 @@ properties:
   # City land outside properties is public space: nobody builds there (admins with nordia.admin.property.bypass can).
   protect-city-land: true
 
+renting:
+  min-period-hours: 24
+  max-period-hours: 720
+  # Unpaid rent: time before the tenant is evicted.
+  grace-hours: 24
+  eviction-reputation: -5
+
 settlements:
   # Extra space kept between a settlement's largest possible area and cities or other settlements.
   spacing-buffer: 64

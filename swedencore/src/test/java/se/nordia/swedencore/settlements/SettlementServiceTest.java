@@ -37,7 +37,7 @@ class SettlementServiceTest extends CoreTest {
         tiers.put(Settlement.Tier.TOWN, new SettlementConfig.Requirements(192, 3, Money.ofSek(10_000), 7, 10, Money.ofSek(5_000)));
         tiers.put(Settlement.Tier.CITY, new SettlementConfig.Requirements(256, 3, Money.ofSek(10_000), 7, 10, Money.ofSek(5_000)));
         return new CoreConfig(d.database(), d.economy(), d.skills(), d.companies(), d.contracts(), d.properties(), d.shops(),
-                new SettlementConfig(tiers, 64, 20), d.orders(), d.production(), d.loans(), d.defaultLocale(), d.shutdownOnDatabaseFailure());
+                new SettlementConfig(tiers, 64, 20), d.orders(), d.production(), d.loans(), d.leases(), d.defaultLocale(), d.shutdownOnDatabaseFailure());
     }
 
     @BeforeEach

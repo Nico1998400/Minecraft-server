@@ -107,7 +107,7 @@ public final class PaperConfigLoader {
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
                 contracts(section(file, "contracts")), properties(section(file, "properties")), shops(section(file, "shops")),
-                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), production(productionFile, logger), loans(section(file, "loans")), defaultLocale,
+                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), production(productionFile, logger), loans(section(file, "loans")), leases(section(file, "renting")), defaultLocale,
                 db.getBoolean("shutdown-server-on-failure", true));
     }
 
@@ -120,6 +120,13 @@ public final class PaperConfigLoader {
                 s.getInt("default-after-overdue-installments", d.defaultAfterOverdue()),
                 s.getInt("reputation.late-installment", d.lateReputation()), s.getInt("reputation.default", d.defaultReputation()),
                 s.getInt("reputation.repaid", d.repaidReputation()), s.getInt("max-open-offers", d.maxOpenOffers()));
+    }
+
+    static se.nordia.swedencore.properties.LeaseService.Config leases(ConfigurationSection s) {
+        var d = se.nordia.swedencore.properties.LeaseService.Config.defaults();
+        return new se.nordia.swedencore.properties.LeaseService.Config(s.getInt("min-period-hours", d.minPeriodHours()),
+                s.getInt("max-period-hours", d.maxPeriodHours()), s.getInt("grace-hours", d.graceHours()),
+                s.getInt("eviction-reputation", d.evictionReputation()));
     }
 
     static BuyOrderService.Config orders(ConfigurationSection s) {

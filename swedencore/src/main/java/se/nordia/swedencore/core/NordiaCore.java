@@ -83,7 +83,7 @@ public final class NordiaCore {
         this.contracts = new ContractService(database, economy, companies, skills, reputation, stash, config.contracts(), clock);
         this.cities = new CityService(database, economy);
         this.properties = new PropertyService(database, economy, companies, cities, events, config.properties());
-        this.leases = new LeaseService(database, economy, companies, properties, reputation, events, LeaseService.Config.defaults(), clock);
+        this.leases = new LeaseService(database, economy, companies, properties, reputation, events, config.leases(), clock);
         this.shops = new ShopService(database, economy, properties, events, config.shops(), clock);
         this.settlements = new SettlementService(database, economy, cities, events, config.settlements(), clock);
         this.trades = new TradeService(database, economy);

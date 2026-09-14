@@ -26,6 +26,7 @@ public record CoreConfig(
         BuyOrderService.Config orders,
         ProductionService.Config production,
         LoanService.Config loans,
+        se.nordia.swedencore.properties.LeaseService.Config leases,
         SupportedLocale defaultLocale,
         boolean shutdownOnDatabaseFailure
 ) {
@@ -34,6 +35,6 @@ public record CoreConfig(
         return new CoreConfig(database, EconomyConfig.defaults(), SkillsConfig.defaults(), CompanyConfig.defaults(),
                 ContractConfig.defaults(), PropertyService.Config.defaults(), ShopService.Config.defaults(),
                 SettlementConfig.defaults(), BuyOrderService.Config.defaults(), ProductionService.Config.defaults(),
-                LoanService.Config.defaults(), SupportedLocale.SV_SE, true);
+                LoanService.Config.defaults(), se.nordia.swedencore.properties.LeaseService.Config.defaults(), SupportedLocale.SV_SE, true);
     }
 }
