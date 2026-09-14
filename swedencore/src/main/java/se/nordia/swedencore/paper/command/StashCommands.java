@@ -41,6 +41,10 @@ public final class StashCommands {
         return Commands.literal("stash")
                 .executes(c -> show(c.getSource(), false, null))
                 .then(Commands.literal("claim").executes(c -> claim(c.getSource(), false, null)))
+                .then(Commands.literal("give").then(Commands.literal("company")
+                        .executes(c -> give(c.getSource(), null))
+                        .then(Commands.argument("company", StringArgumentType.greedyString())
+                                .executes(c -> give(c.getSource(), StringArgumentType.getString(c, "company"))))))
                 .then(Commands.literal("company")
                         .executes(c -> show(c.getSource(), true, null))
                         .then(Commands.literal("claim")
@@ -87,6 +91,61 @@ public final class StashCommands {
             }
             svc.messages().send(player, company ? "stash.claim_hint_company" : "stash.claim_hint");
         });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /** Hands the stack in the main hand to the company inventory. Returned to the player if it fails. */
+    private int give(CommandSourceStack source, String ref) {
+        Player player = svc.requirePlayer(source);
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        ItemStack held = player.getInventory().getItemInMainHand();
+        if (held.getType().isAir()) {
+            svc.messages().send(player, "shop.hold_item");
+            return Command.SINGLE_SUCCESS;
+        }
+        ItemStack taken = held.clone();
+        player.getInventory().setItemInMainHand(null);
+        UUID uuid = player.getUniqueId();
+        UUID token = UUID.randomUUID();
+        Long selected = svc.sessions().get(uuid).map(se.nordia.swedencore.paper.session.PlayerSession::selectedCompanyId).orElse(null);
+        List<ItemStashService.StashItem> items = ItemTransfer.toStash(List.of(taken));
+        svc.tasks().async(() -> {
+            Company company = ref != null ? svc.core().companies().requireByRef(ref)
+                    : selected != null ? svc.core().companies().find(selected).orElseThrow()
+                    : svc.core().companies().resolveForActor(uuid, null);
+            svc.core().stash().giveToCompany(uuid, company.id(), items, token);
+            return company;
+        }).whenComplete((company, error) -> svc.tasks().sync(() -> {
+            boolean stored = error == null;
+            if (!stored && !(se.nordia.swedencore.paper.scheduler.Tasks.unwrap(error) instanceof se.nordia.swedencore.core.DomainException)) {
+                try {
+                    stored = svc.core().stash().depositRecorded(token);
+                } catch (RuntimeException checkFailed) {
+                    stored = true; // cannot tell: never risk duplicating; logged below
+                    svc.core().logger().log(java.util.logging.Level.SEVERE, "[AUDIT] Company deposit outcome unknown, token " + token, checkFailed);
+                }
+            }
+            if (stored) {
+                svc.messages().send(player, "stash.given", "amount", taken.getAmount());
+                return;
+            }
+            // Nothing was stored (the transaction rolled back): give the stack back.
+            if (player.isOnline()) {
+                ItemTransfer.giveOrDrop(player, List.of(taken));
+            } else {
+                svc.tasks().async("return company deposit", () ->
+                        svc.core().stash().deposit(ItemStashService.Owner.player(uuid), items, "DEPOSIT_RETURN", null));
+            }
+            Throwable cause = se.nordia.swedencore.paper.scheduler.Tasks.unwrap(error);
+            if (cause instanceof se.nordia.swedencore.core.DomainException domain) {
+                svc.messages().sendError(player, domain);
+            } else {
+                svc.core().logger().log(java.util.logging.Level.SEVERE, "Company item deposit failed", cause);
+                svc.messages().send(player, "error.internal");
+            }
+        }));
         return Command.SINGLE_SUCCESS;
     }
 

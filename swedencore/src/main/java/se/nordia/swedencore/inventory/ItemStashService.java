@@ -75,6 +75,36 @@ public final class ItemStashService {
         database.inTransactionVoid(tx -> deposit(tx, owner, items, sourceType, sourceId));
     }
 
+    /**
+     * A company member hands items over to the company (company inventory).
+     *
+     * @param token unique per attempt; stored as the source id so {@link #depositRecorded} can resolve ambiguous commits
+     */
+    public void giveToCompany(UUID actor, long companyId, List<StashItem> items, UUID token) {
+        database.inTransactionVoid(tx -> {
+            companies.lockActive(tx, companyId);
+            companies.requireRole(tx, companyId, actor, CompanyRole.values());
+            deposit(tx, Owner.company(companyId), items, "MEMBER_DEPOSIT", token.toString());
+        });
+    }
+
+    public boolean depositRecorded(UUID token) {
+        return database.inTransaction(tx -> tx.queryOne(
+                "SELECT 1 FROM item_stash WHERE source_type = 'MEMBER_DEPOSIT' AND source_id = ? LIMIT 1", rs -> true, token.toString())).isPresent();
+    }
+
+    /** Work-site output produced by an employee for their employer. Membership is re-checked at commit time. */
+    public void depositWorkOutput(long companyId, UUID employee, List<StashItem> items) {
+        database.inTransactionVoid(tx -> {
+            if (companies.roleOf(tx, companyId, employee).isEmpty()) {
+                // Employment ended in the meantime: the output belongs to the worker, not the former employer.
+                deposit(tx, Owner.player(employee), items, "WORK_OUTPUT_RETURNED", Long.toString(companyId));
+                return;
+            }
+            deposit(tx, Owner.company(companyId), items, "WORK_OUTPUT", employee.toString());
+        });
+    }
+
     public long countUnclaimed(Owner owner) {
         return database.inTransaction(tx -> tx.queryLong(
                 "SELECT count(*) FROM item_stash WHERE owner_type = ? AND owner_id = ? AND claimed_at IS NULL", owner.type(), owner.id()));

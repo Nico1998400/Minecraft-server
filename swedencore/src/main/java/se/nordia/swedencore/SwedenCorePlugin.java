@@ -29,6 +29,7 @@ import se.nordia.swedencore.paper.properties.ProtectionListener;
 import se.nordia.swedencore.paper.command.EconomyCommands;
 import se.nordia.swedencore.paper.command.JobCommands;
 import se.nordia.swedencore.paper.command.LanguageCommand;
+import se.nordia.swedencore.paper.jobs.WorkSiteListener;
 import se.nordia.swedencore.paper.jobs.WorkTracker;
 import se.nordia.swedencore.paper.command.SkillCommands;
 import se.nordia.swedencore.paper.listener.ConnectionListener;
@@ -137,6 +138,10 @@ public final class SwedenCorePlugin extends JavaPlugin {
         ProtectionIndex protection = new ProtectionIndex(core, tasks);
         registerListeners(new ProtectionListener(protection, messages, getConfig().getBoolean("properties.protect-city-land", true)));
         protection.reloadAll();
+        WorkSiteListener workSites = new WorkSiteListener(core, work, protection, messages, tasks);
+        registerListeners(workSites);
+        getServer().getScheduler().runTaskTimer(this, workSites::flushAll, 400L, 400L);
+        shutdownHooks.add(workSites::flushAllBlocking);
 
         // ---- shops
         ShopIndex shopIndex = new ShopIndex(this, core, tasks);
