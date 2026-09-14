@@ -45,7 +45,8 @@ public final class Tx {
             if (rs.next()) {
                 throw new DatabaseException("Expected at most one row for query: " + sql);
             }
-            return Optional.of(value);
+            // A row whose mapped value is null (e.g. MAX over no rows) counts as "no value".
+            return Optional.ofNullable(value);
         }
     }
 

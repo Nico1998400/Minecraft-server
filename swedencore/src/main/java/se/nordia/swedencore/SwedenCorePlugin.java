@@ -18,6 +18,7 @@ import se.nordia.swedencore.paper.command.ContractCommands;
 import se.nordia.swedencore.paper.command.PropertyCommands;
 import se.nordia.swedencore.paper.command.SettlementCommands;
 import se.nordia.swedencore.paper.command.ShopCommands;
+import se.nordia.swedencore.paper.command.MarketCommand;
 import se.nordia.swedencore.paper.command.OrderCommands;
 import se.nordia.swedencore.paper.command.ProductionCommands;
 import se.nordia.swedencore.paper.command.ProfileCommand;
@@ -207,6 +208,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new OrderCommands(services).register(event.registrar());
             new ProfileCommand(services).register(event.registrar());
             new ProductionCommands(services).register(event.registrar());
+            new MarketCommand(services).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

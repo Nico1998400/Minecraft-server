@@ -13,6 +13,7 @@ import se.nordia.swedencore.inventory.ItemStashService;
 import se.nordia.swedencore.database.Database;
 import se.nordia.swedencore.economy.EconomyService;
 import se.nordia.swedencore.jobs.JobService;
+import se.nordia.swedencore.market.MarketService;
 import se.nordia.swedencore.jobs.PayrollService;
 import se.nordia.swedencore.player.PlayerService;
 import se.nordia.swedencore.player.ProfileService;
@@ -54,6 +55,7 @@ public final class NordiaCore {
     private final BuyOrderService orders;
     private final ProfileService profiles;
     private final ProductionService production;
+    private final MarketService market;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -73,12 +75,17 @@ public final class NordiaCore {
         this.contracts = new ContractService(database, economy, companies, skills, reputation, stash, config.contracts(), clock);
         this.cities = new CityService(database, economy);
         this.properties = new PropertyService(database, economy, companies, cities, events, config.properties());
-        this.shops = new ShopService(database, economy, properties, events, config.shops());
+        this.shops = new ShopService(database, economy, properties, events, config.shops(), clock);
         this.settlements = new SettlementService(database, economy, cities, events, config.settlements(), clock);
         this.trades = new TradeService(database, economy);
         this.orders = new BuyOrderService(database, economy, companies, stash, config.orders(), clock);
         this.profiles = new ProfileService(database, economy, skills);
         this.production = new ProductionService(database, companies, stash, skills, config.production(), clock);
+        this.market = new MarketService(database, clock, java.time.Duration.ofDays(7));
+    }
+
+    public MarketService market() {
+        return market;
     }
 
     public ProductionService production() {

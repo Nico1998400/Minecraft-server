@@ -54,13 +54,16 @@ public final class ShopService {
     private final PropertyService properties;
     private final DomainEvents events;
     private final Config config;
+    private final java.time.Clock clock;
 
-    public ShopService(Database database, EconomyService economy, PropertyService properties, DomainEvents events, Config config) {
+    public ShopService(Database database, EconomyService economy, PropertyService properties, DomainEvents events, Config config,
+                       java.time.Clock clock) {
         this.database = database;
         this.economy = economy;
         this.properties = properties;
         this.events = events;
         this.config = config;
+        this.clock = clock;
         properties.addOwnershipChangeHook((tx, propertyId) -> {
             // A new owner does not inherit the previous owner's shop or its listings.
             tx.update("DELETE FROM shop_listings WHERE shop_id IN (SELECT id FROM shops WHERE property_id = ?)", propertyId);
@@ -227,10 +230,11 @@ public final class ShopService {
                     TransactionType.SHOP_PURCHASE, "shop-sale:" + token, buyer, "SHOP", Long.toString(shop.id()), null));
             int items = Math.multiplyExact(bundles, listing.bundleSize());
             tx.update("""
-                            INSERT INTO shop_sales (shop_id, listing_id, buyer_uuid, material, bundles, items, unit_price, total, token, transaction_id)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            INSERT INTO shop_sales (shop_id, listing_id, buyer_uuid, material, bundles, items, unit_price, total, token,
+                                                    transaction_id, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     shop.id(), listingId, buyer, listing.material(), bundles, items, listing.price().ore(), total.ore(), token,
-                    receipt.transactionId());
+                    receipt.transactionId(), clock.instant());
             return new PurchaseReceipt(listing, bundles, items, total, receipt.transactionId());
         });
     }

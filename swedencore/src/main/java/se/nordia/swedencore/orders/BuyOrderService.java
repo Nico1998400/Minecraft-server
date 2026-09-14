@@ -163,8 +163,10 @@ public final class BuyOrderService {
                 throw DomainException.of("contract.too_many_items", "remaining", order.remaining());
             }
             Money payout = order.unitPrice().times(sold);
-            long fillId = tx.queryLong("INSERT INTO buy_order_fills (order_id, seller_uuid, token, quantity, payout) VALUES (?, ?, ?, ?, ?) RETURNING id",
-                    orderId, seller, token, sold, payout.ore());
+            long fillId = tx.queryLong("""
+                            INSERT INTO buy_order_fills (order_id, seller_uuid, token, quantity, payout, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?) RETURNING id""",
+                    orderId, seller, token, sold, payout.ore(), clock.instant());
             Account escrow = economy.findAccount(tx, AccountOwner.buyOrder(orderId), Account.ESCROW).orElseThrow();
             Account sellerAccount = economy.requireAccount(tx, AccountOwner.player(seller));
             TransferReceipt receipt = economy.transfer(tx, new TransferRequest(escrow.id(), sellerAccount.id(), payout,

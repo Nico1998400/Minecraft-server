@@ -72,6 +72,8 @@ Services are synchronous and thread-safe; the database is the source of truth. T
   unique idempotency keys, partial unique indexes for "only one active X". Keep them.
 - Anything that can be triggered twice (rewards, payroll, contract payouts, starter money) needs an idempotency key.
 - Do not implement future entities (shares, loans, vehicles…) before their roadmap phase.
+- Timestamps that drive game logic (ages, deadlines, statistics windows) must be written from the service's injected
+  `Clock`, not the database `now()` — otherwise logic and data disagree (and tests with a controlled clock break).
 
 ## 7. Security rules — think like an attacker
 
