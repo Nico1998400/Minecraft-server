@@ -15,6 +15,9 @@ PostgreSQL 18 (dev via docker compose, tests via embedded PostgreSQL). Access th
 | V1 | `players`, `accounts`, `transactions`, system accounts MINT and SINK |
 | V2 | `skills` (reference), `skill_progress` |
 | V3 | `reputation_events`, `companies`, `jobs` (reference), `job_positions`, `company_employees`, `job_applications`, `payroll_entries` |
+| V4 | `contracts`, `contract_deliveries` (unique token), `item_stash` |
+| V5 | `cities`, `properties`, `property_trusted`, `property_sales` |
+| V6 | `shops`, `shop_listings`, `shop_sales` (unique token) |
 
 ## Global conventions
 
@@ -93,6 +96,25 @@ Membership rows: `role OWNER|MANAGER|EMPLOYEE`, optional `position_id`, `salary_
 One row per batch of verified work minutes: `employee_id, company_id, player_uuid, period_start, work_minutes,
 salary_per_hour, amount, status PAID|UNPAID, transaction_id`. `UNIQUE(employee_id, period_start)` makes batches
 idempotent. UNPAID rows are the company's wage arrears, settled oldest-first (`payroll:<id>` transaction key).
+
+### contracts / contract_deliveries
+Issuer is a player or company (CHECK enforces exactly one). Reward escrowed in account `CONTRACT:<id>:ESCROW`;
+`paid_out ≤ reward`. Status `OPEN|IN_PROGRESS|COMPLETED|CANCELLED|EXPIRED` with contractor consistency CHECK.
+Deliveries carry a client-generated unique `token` so an ambiguous commit can be verified before returning items.
+
+### item_stash
+Opaque serialized item stacks (≤ 64 KiB, amount 1–99) held for a `PLAYER` or `COMPANY`. Claiming sets `claimed_at`
+and `claimed_by` before items are handed out (crash ⇒ possible loss, never duplication).
+
+### cities / properties
+`cities(name unique ci, world, center, radius)` with account `CITY:<id>`. `properties` store an inclusive cuboid,
+`type`, optional `city_id`, `owner_type/owner_id` (NULL iff `AVAILABLE`), `price`, `market_value`. Overlaps are
+prevented in the service under `pg_advisory_xact_lock(hashtext('properties:<world>'))`. `property_sales` is the price
+history; `property_trusted` extra builders.
+
+### shops / shop_listings / shop_sales
+One shop per SHOP property. A listing is bound to a container location (unique world+xyz), an item template, bundle
+size and price. `shop_sales` records each purchase with a unique `token` and the ledger transaction.
 
 ## Invariants (verified by `/eco audit` and tests)
 

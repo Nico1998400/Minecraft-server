@@ -1,10 +1,9 @@
 # Development Status
 
-_Last updated: 2026-09-13_
+_Last updated: 2026-09-14_
 
 ## Current phase
-**P0 complete. P1 core gameplay complete** (skills, jobs, employment, companies, contracts, reputation).
-Next: **P2 — player economy** (properties, cities, settlements, shops, direct trade).
+**P0 complete. P1 complete. P2 in progress**: cities, properties and shops done; settlements next.
 
 ## Environment verified
 - Paper 26.2 build 123 (STABLE) — requires Java 25
@@ -33,17 +32,26 @@ Next: **P2 — player economy** (properties, cities, settlements, shops, direct 
 - [x] Payroll: verified work minutes → idempotent batches, arrears settled oldest-first, withdrawal block, rep penalty
 - [x] Contracts (V4): escrow, item delivery → stash, service contracts, cancel/abandon/expiry, XP & reputation rules
 - [x] Item stash: `/stash`, `/stash company`, claim limited to free slots; delivery token prevents duplication
-- [x] 119 tests incl. concurrency and exploit cases; ledger audit asserted in economic tests
+
+### P2 — Player economy
+- [x] Cities (V5): admin-created, square area, treasury account, stats (residents, businesses)
+- [x] Properties (V5): cuboid regions, 9 types, player/company ownership, market (city treasury / resale),
+      expected-price check, trusted players, company staff access, dissolution blocked while owning property
+- [x] Protection: in-memory chunk index refreshed by domain events; blocks, interactions, explosions, fire, liquids,
+      pistons, hoppers; public city land
+- [x] Shops (V6): chest-bound listings in SHOP properties, buy at the chest only, tokened purchases, labels,
+      `/shops find`, revenue to owner/company, shop closed on property sale
+- [x] Domain event bus (`events.DomainEvents`), published after commit
+- [x] Ledger history shows company names as counterparties
+- [x] 137 tests
 
 ## Next steps (exact)
-1. **Cities & properties (V5)**: `cities` (predefined Stockholm/Göteborg/Helsingborg, treasury accounts),
-   `properties` (cuboid region, type, owner player/company, price, status), admin commands to define properties
-   (`/property admin create` using a selection), `/property buy`, protection listener (break/place/interact).
-2. **Settlements (V6)**: founding requirements (money, population, time), tiers outpost→city.
-3. **Player shops (V7)**: shop at owned SHOP property, chest-backed stock, sign/GUI purchase, company-owned shops.
-4. **Direct trade**: two-player GUI trade, atomic swap, disconnect-safe.
-5. `/profile [player]` — identity: reputation, companies, skills summary (foundation for player history).
-6. Ledger history should also resolve company names as counterparties.
+1. **Settlements (V7)**: player-founded in wilderness; tiers OUTPOST→SETTLEMENT→VILLAGE→TOWN→CITY with configurable
+   requirements (members, treasury, age, founder reputation); settlement treasury; member-only building inside radius.
+2. **Direct trade**: two-player trade GUI, both confirm, atomic item+money swap, disconnect/close safe.
+3. **Buy orders / advertisements** ("Buying 10 000 iron at 18 SEK"): escrowed, fulfilled at a physical location or via stash.
+4. **Company inventory / work sites**: employees deposit output to company stash; company property chests.
+5. `/profile [player]` — identity: reputation, companies, properties, skills summary.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.
