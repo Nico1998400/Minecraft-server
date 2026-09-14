@@ -99,8 +99,10 @@ Changes are recorded as events (auditable, idempotent).
 - **Payroll** runs every *(config: 5)* minutes: `salary/hour × active minutes / 60`, paid from the **company account**.
   Each payroll period is idempotent. If the company cannot pay, the wage is recorded as **arrears** and retried
   automatically when funds exist; the company loses reputation. This creates real company risk (§8).
-- *Known MVP gap:* resources produced by employees stay in their inventory; handing them to the company is a social
-  agreement. **Company inventory & work sites (P2)** will route output to the company.
+- **Work sites:** blocks broken by an on-duty employee inside a MINE, FARM, FACTORY or INDUSTRIAL_LAND property owned
+  by their employer drop straight into the **company inventory** (company stash). The company pays wages and owns the
+  output. Outside work sites, members can hand items over with `/stash give company`.
+- If employment ended before buffered output is stored, the output goes to the worker instead.
 
 ## 7. Companies
 
@@ -133,11 +135,21 @@ Contracts connect players and companies. Issuer: player or company.
 
 ## 10. Trade without an auction house
 
-The following replace a global AH (P2): physical **player/company shops** at properties, **buy orders & advertisements**
-("Buying 10 000 iron at 18 SEK"), **direct secure trades** (atomic, disconnect-safe), **supplier agreements**
-(recurring contracts), and physical marketplaces in cities.
+Implemented replacements for a global AH:
 
-A shop's success depends on location, stock, price, reputation, opening hours and competition.
+| System | How it works | Why it is not an AH |
+|---|---|---|
+| **Shops** | A SHOP property holds chests; each chest is a listing (item, bundle, price). Customers right-click the chest and buy with a click; revenue goes to the owner or company. Floating labels show the offer. | You must travel to the chest. Location, stock and opening status matter. |
+| **`/shops find <item>`** | Lists shops selling an item, cheapest per item first, with coordinates. | Information only — an advertisement. Competition is visible, buying still requires the trip. |
+| **Buy orders** | "Buying 10 000 iron ore at 18 SEK": escrowed budget (+1% fee), many sellers fill it, goods go to the buyer's stash. | Demand-side contracts between named parties; no anonymous sell listings. |
+| **Contracts** | Exclusive, escrowed jobs (deliveries, services) with reputation and skill XP. | Relationship-based work. |
+| **Direct trade** | Two nearby players, server-controlled trade window, both confirm after a cooldown, money and record commit atomically. | Face to face. |
+
+Trade security rules: purchases/fills/deliveries carry a unique token (ambiguous commits are verified before items
+are returned), prices shown to the buyer must equal the price at commit (no bait-and-switch), and items are always
+removed before money moves and only returned on definite failure — a crash can lose items but never duplicate them.
+
+Future: supplier agreements (recurring contracts), physical marketplaces (city-owned market stalls), price statistics.
 
 ## 11. NPC money (future)
 
@@ -149,8 +161,20 @@ in the ledger, and never the best deal for goods players can supply.
 - Properties: typed (apartment, house, shop, office, factory, warehouse, industrial land, farm, mine), bounded region,
   owner (player/company), city/settlement, price, status (available/owned/rented), market value.
 - Cities: 1–3 predefined (Stockholm, Göteborg, Helsingborg) with treasury accounts; property sales pay the city.
-- Settlements: outpost → settlement → village → town → city. Advancement requires population, money, buildings,
-  reputation and time *(config)* — "we built this", never `/town create`.
+- Settlements (implemented): founded in the wilderness for a cost (sink). Placement keeps room for the largest tier
+  (plus a buffer) from cities and other settlements. Residents join by invite (one settlement per player); land within
+  the tier radius is protected for residents. The leader upgrades when all requirements are met; the cost is spent
+  from the treasury as public works:
+
+  | Tier | Radius | Residents | Treasury | Age | Leader rep. | Cost |
+  |---|---|---|---|---|---|---|
+  | Outpost | 32 | 1 | – | – | 0 | 10 000 (founder) |
+  | Settlement | 64 | 3 | 25 000 | 3 d | 0 | 10 000 |
+  | Village | 128 | 8 | 100 000 | 14 d | 10 | 50 000 |
+  | Town | 192 | 15 | 500 000 | 30 d | 25 | 200 000 |
+  | City | 256 | 30 | 2 000 000 | 60 d | 50 | 1 000 000 |
+
+  "We built this", never `/town create`. *Future:* building/infrastructure requirements, settlement plots, taxes.
 - Wilderness stays valuable: space, resources, freedom.
 
 ## 13. Future phases (architecture-aware, not implemented)

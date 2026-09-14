@@ -30,10 +30,28 @@
 | `player` | Registration, identity, locale preference |
 | `economy` | `Money`, accounts, ledger, transfers, mint/sink, audit |
 | `localization` | Locale enum, message bundles with fallback |
+| `skills` | Level curve, XP buffer, rate limiter, persistence |
+| `reputation` | Clamped scores and idempotent event log |
+| `companies` | Companies, roles, finances, staff, dissolution checks |
+| `jobs` | Job board, applications, payroll (verified work minutes, arrears) |
+| `contracts` | Escrowed contracts, deliveries, expiry |
+| `inventory` | Item stash (player/company inventory held by the server) |
+| `cities` / `properties` | Cities with treasuries; property regions, market, access lists, region index |
+| `shops` | Physical chest shops, tokened purchases, sales history |
+| `settlements` | Player-founded settlements and tier growth |
+| `trade` | Trade state machine and atomic trade completion |
+| `orders` | Buy orders |
+| `player` | Registration and profiles |
+| `events` | Domain events published after commit |
 | `paper` | Everything that touches Bukkit/Paper/Adventure |
 
-Later modules (skills, jobs, companies, contracts, reputation, properties, cities, settlements) follow the same shape:
-records for domain values, one service per module, SQL in the service or a small repository class.
+All modules follow the same shape: records for domain values, one service per module with SQL inside, extension
+hooks (dissolution checks, ownership hooks, placement checks) instead of cyclic dependencies.
+
+### Cross-module hooks
+Later modules must be able to veto or react to earlier ones without the earlier module knowing about them:
+`CompanyService.addDissolutionCheck` (contracts, properties, orders), `PropertyService.addOwnershipChangeHook` (shops),
+`CityService.addPlacementCheck` (settlements). Hooks run inside the caller's transaction.
 
 ## Key decisions and why
 

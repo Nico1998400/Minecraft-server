@@ -29,6 +29,18 @@ docker compose up -d                 # PostgreSQL on localhost:5432
 
 The plugin jar is built to `swedencore/build/libs/SwedenCore-<version>.jar`.
 
+## Player commands (Swedish aliases in parentheses)
+
+| Area | Commands |
+|---|---|
+| Money | `/balance` (`/saldo`), `/pay` (`/betala`), `/transactions` (`/transaktioner`) |
+| Identity | `/profile` (`/profil`), `/language sv\|en` (`/sprak`), `/skills` (`/fardigheter`) |
+| Work | `/jobs` (`/jobb`) — board, apply, duty, payslips · `/company` (`/foretag`) — found, staff, positions, finances |
+| Deals | `/contracts`, `/contract` (`/kontrakt`) · `/orders`, `/order` (`/bestall`) · `/trade` (`/byt`) |
+| Places | `/property` (`/fastighet`), `/city` (`/stad`), `/settlement` (`/by`) |
+| Goods | `/shop` (`/butik`), `/shops find` (`/butiker`), `/stash` (`/forrad`) |
+| Admin | `/eco`, `/nordia reload`, `/property admin`, `/city admin` |
+
 ## Tech
 
 Paper 26.2 · Java 25 · Gradle 9.7.1 · PostgreSQL 18 · HikariCP · JUnit 6

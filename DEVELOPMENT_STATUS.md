@@ -3,15 +3,17 @@
 _Last updated: 2026-09-14_
 
 ## Current phase
-**P0 complete. P1 complete. P2 in progress**: cities, properties and shops done; settlements next.
+**P0 complete. P1 complete. P2 (player economy) feature-complete for the MVP.**
+Remaining P2 work is polish (GUIs, basic production). Next major phase: **P3 — advanced economy**.
 
 ## Environment verified
 - Paper 26.2 build 123 (STABLE) — requires Java 25
 - Java 25 (Temurin, auto-provisioned by Gradle toolchain); Gradle 9.7.1 wrapper
 - PostgreSQL 18 via `docker compose` for dev; embedded PostgreSQL 18 for tests (works on Windows, no Docker)
-- Plugin verified on a real Paper 26.2 server after every phase: loads, migrates (V1–V4), commands respond, clean shutdown
-- Not verified with a real game client (no client available in the dev environment) — gameplay listeners
-  (XP from blocks/fishing, duty payroll, deliveries) are covered by domain tests only.
+- Plugin verified on a real Paper 26.2 server after every feature: loads, migrates (V1–V9), commands respond, clean shutdown
+- **Not verified with a real game client** (none available in the dev environment). Gameplay listeners and GUIs
+  (XP from blocks, duty payroll, deliveries, shop chests, trade window, work sites, protection) are covered by domain
+  tests only. First playtest should focus on: trade window clicks, shop purchase flow, work-site drops, protection.
 
 ## Done
 ### P0 — Foundation
@@ -23,40 +25,38 @@ _Last updated: 2026-09-14_
 - [x] `/balance`, `/pay`, `/transactions`, `/eco give|take|balance|supply|audit`, `/nordia [reload]`
 
 ### P1 — Core gameplay
-- [x] Skills (V2): level curve, buffered XP + periodic flush, `/skills [player]`, `/skills top <skill>`
-- [x] XP sources: Mining, Forestry, Farming (mature crops), Herbalism, Fishing (AFK-checked), Building (5-min maturity)
-- [x] Anti-exploit: placed-block tracker (chunk PDC), generator/piston blocks, AFK via head rotation, hourly soft cap
-- [x] Reputation (V3): event log, clamped scores, idempotent adjustments
-- [x] Companies (V3): founding fee, company account, roles, deposit/withdraw, staff management, dissolution
-- [x] Jobs & employment (V3): catalogue, positions, applications, accept/reject, `/jobs duty`
-- [x] Payroll: verified work minutes → idempotent batches, arrears settled oldest-first, withdrawal block, rep penalty
-- [x] Contracts (V4): escrow, item delivery → stash, service contracts, cancel/abandon/expiry, XP & reputation rules
-- [x] Item stash: `/stash`, `/stash company`, claim limited to free slots; delivery token prevents duplication
+- [x] Skills (V2): level curve, buffered XP, anti-exploit XP sources, `/skills`
+- [x] Reputation, companies, jobs, employment, activity-based payroll with arrears (V3)
+- [x] Contracts with escrow, item stash (V4)
 
 ### P2 — Player economy
-- [x] Cities (V5): admin-created, square area, treasury account, stats (residents, businesses)
-- [x] Properties (V5): cuboid regions, 9 types, player/company ownership, market (city treasury / resale),
-      expected-price check, trusted players, company staff access, dissolution blocked while owning property
-- [x] Protection: in-memory chunk index refreshed by domain events; blocks, interactions, explosions, fire, liquids,
-      pistons, hoppers; public city land
-- [x] Shops (V6): chest-bound listings in SHOP properties, buy at the chest only, tokened purchases, labels,
-      `/shops find`, revenue to owner/company, shop closed on property sale
-- [x] Domain event bus (`events.DomainEvents`), published after commit
-- [x] Ledger history shows company names as counterparties
-- [x] 137 tests
+- [x] Cities & properties (V5), protection index + listener, `/property`, `/city`
+- [x] Physical shops (V6), `/shop`, `/shops find`
+- [x] Settlements (V7): outpost → city tiers, treasury, members, land protection, `/settlement`
+- [x] Direct trading (V8): server-controlled trade window, atomic money swap, `/trade`
+- [x] Buy orders (V9): escrowed multi-seller demand, `/orders`, `/order`
+- [x] Company inventory (`/stash give company`) and work sites (employee drops → company stash)
+- [x] `/profile [player]` — identity and story
+- [x] Domain event bus; ledger shows player and company counterparties
+- [x] 157 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
-1. **Settlements (V7)**: player-founded in wilderness; tiers OUTPOST→SETTLEMENT→VILLAGE→TOWN→CITY with configurable
-   requirements (members, treasury, age, founder reputation); settlement treasury; member-only building inside radius.
-2. **Direct trade**: two-player trade GUI, both confirm, atomic item+money swap, disconnect/close safe.
-3. **Buy orders / advertisements** ("Buying 10 000 iron at 18 SEK"): escrowed, fulfilled at a physical location or via stash.
-4. **Company inventory / work sites**: employees deposit output to company stash; company property chests.
-5. `/profile [player]` — identity: reputation, companies, properties, skills summary.
+1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
+2. **Basic production (P2 #32)**: company recipes that convert stash inputs into outputs over time at FACTORY
+   properties (e.g. iron ore → iron ingots), requiring an on-duty ENGINEER; output to company stash.
+3. **P3 — dynamic market statistics**: price index per material from `shop_sales`, `buy_order_fills`, contract
+   deliveries; `/market <item>` showing recent average prices and volume (no trading from the command).
+4. **P3 — banking & loans**: company loans from a bank entity with interest and repayment schedule; bankruptcy
+   procedure using `companies.status = BANKRUPT` and wage arrears.
+5. **Rent/lease for properties** (landlord income): monthly rent paid from tenant to owner with eviction on default.
+6. GUI menus for common flows (job board, company management) — optional polish.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.
-- Employee output (mined ore) stays in the employee inventory; company inventory/work sites are P2.
 - Jobs without a skill (shop assistant, manager, general worker) are paid for non-AFK minutes on duty.
 - Piston direction handling marks both axis neighbours as placed (can deny XP for an adjacent natural block).
-- Local test harness (not committed) drives the server console through redirected stdin; the first command sent
-  is eaten by a BOM from Windows PowerShell 5.1.
+- Trade window money buttons adjust in 100 / 1 000 / 10 000 SEK steps (chat cannot be opened in a container GUI).
+- Buy orders can be filled from anywhere (goods delivered to the issuer's stash). Logistics (P3) may later require
+  physical transport.
+- Dev harness (not committed) drives the server console via redirected stdin; the first command is eaten by a BOM.
+- Windows PowerShell 5.1: commit messages containing double quotes break `git commit -m`; use `git commit -F file`.

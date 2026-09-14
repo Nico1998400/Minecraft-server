@@ -18,6 +18,9 @@ PostgreSQL 18 (dev via docker compose, tests via embedded PostgreSQL). Access th
 | V4 | `contracts`, `contract_deliveries` (unique token), `item_stash` |
 | V5 | `cities`, `properties`, `property_trusted`, `property_sales` |
 | V6 | `shops`, `shop_listings`, `shop_sales` (unique token) |
+| V7 | `settlements`, `settlement_members`, `settlement_invites`, `settlement_tier_history` |
+| V8 | `trades` (unique token) |
+| V9 | `buy_orders`, `buy_order_fills` (unique token); `ORDER` account owner type |
 
 ## Global conventions
 
@@ -116,6 +119,20 @@ history; `property_trusted` extra builders.
 One shop per SHOP property. A listing is bound to a container location (unique world+xyz), an item template, bundle
 size and price. `shop_sales` records each purchase with a unique `token` and the ledger transaction.
 
+### settlements
+`settlements(name unique ci among ACTIVE, world, center, tier, leader_uuid, status, founded_at)` with account
+`SETTLEMENT:<id>`. Radius is derived from the tier via configuration (not stored). `settlement_members` has a partial
+unique index on `player_uuid WHERE left_at IS NULL` (one settlement per player). `settlement_tier_history` records
+when each tier was reached. Placement is serialised with `pg_advisory_xact_lock(hashtext('settlements:<world>'))`.
+
+### trades
+One row per completed direct trade: both players, money each way, human-readable item summaries, unique `token`.
+Money transfers reference the trade id and use keys `trade:<token>:ab|ba`.
+
+### buy_orders / buy_order_fills
+Issuer player or company; `quantity`, `filled ≤ quantity`, `unit_price`; escrow account `ORDER:<id>:ESCROW`.
+Each fill has a unique `token`, the quantity and payout.
+
 ## Invariants (verified by `/eco audit` and tests)
 
 1. `SUM(accounts.balance) = 0` — money is conserved; MINT is negative by the amount ever created.
@@ -130,4 +147,4 @@ more than one row of the same table must lock in ascending id order. When lockin
 **domain rows first, then accounts**. Established order:
 
 `players (founding serialisation) → companies → job_positions → job_applications → company_employees → payroll_entries
-→ contracts → reputation subject rows → accounts`
+→ contracts / buy_orders / properties / shop_listings / settlements → reputation subject rows → skill_progress → accounts`
