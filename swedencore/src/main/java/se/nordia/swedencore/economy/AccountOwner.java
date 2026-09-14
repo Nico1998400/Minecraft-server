@@ -7,7 +7,11 @@ import java.util.UUID;
 public record AccountOwner(OwnerType type, String id) {
 
     public enum OwnerType {
-        SYSTEM, PLAYER, COMPANY, CITY, SETTLEMENT, CONTRACT, ORDER, TRANSPORT
+        SYSTEM, PLAYER, COMPANY, CITY, SETTLEMENT, CONTRACT, ORDER, TRANSPORT, SHARE_BID
+    }
+
+    public static AccountOwner shareBid(long bidId) {
+        return new AccountOwner(OwnerType.SHARE_BID, Long.toString(bidId));
     }
 
     public static AccountOwner transport(long transportId) {

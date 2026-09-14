@@ -27,6 +27,7 @@ PostgreSQL 18 (dev via docker compose, tests via embedded PostgreSQL). Access th
 | V13 | `transports` (pickup/delivery tokens); `TRANSPORT` account owner type (purposes `ESCROW`, `COLLATERAL`) |
 | V14 | `production_runs.facility`, `production_runs.outputs` (snapshot of total outputs) |
 | V15 | `share_holdings`, `share_offers`, `share_trades`, `dividends`; initial 1 000 shares for existing active companies |
+| V16 | `share_bids`; `SHARE_BID` account owner type (escrow); `share_trades.bid_id` (a trade fills an offer or a bid) |
 
 ## Global conventions
 

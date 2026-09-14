@@ -92,7 +92,12 @@ public final class ShareService {
         }
     }
 
-    public record Trade(long offerId, long quantity, Money total, Money fee) {
+    /** A trade against an offer or a bid ({@code sourceId} is that offer's or bid's id). */
+    public record Trade(long sourceId, long quantity, Money total, Money fee) {
+    }
+
+    public record Bid(long id, long companyId, String companyName, UUID buyer, String buyerName, long remaining, Money pricePerShare,
+                      Instant expiresAt, String status) {
     }
 
     public record Dividend(long id, Money perShare, long shares, Money total, int recipients) {
@@ -163,15 +168,7 @@ public final class ShareService {
         if (hours < 1 || hours > config.maxOfferHours()) {
             throw DomainException.of("contract.invalid_duration", "max", config.maxOfferHours());
         }
-        Money total;
-        try {
-            total = pricePerShare.times(quantity);
-        } catch (ArithmeticException e) {
-            throw DomainException.of("economy.amount_too_large", "max", economy.config().maxTransferAmount());
-        }
-        if (total.isGreaterThan(economy.config().maxTransferAmount())) {
-            throw DomainException.of("economy.amount_too_large", "max", economy.config().maxTransferAmount());
-        }
+        total(pricePerShare, quantity);
         if (actor.equals(buyer) && !fromTreasury) {
             throw new DomainException("shares.own_offer");
         }
@@ -266,7 +263,177 @@ public final class ShareService {
         });
     }
 
+    // ------------------------------------------------------------------ bids (buy side)
+
+    /** A player bids for shares; price × quantity is escrowed until filled, cancelled or expired. */
+    public Bid bid(UUID buyer, long companyId, long quantity, Money pricePerShare, int hours) {
+        if (quantity < 1) {
+            throw new DomainException("shares.invalid_quantity");
+        }
+        if (!pricePerShare.isPositive()) {
+            throw new DomainException("economy.invalid_amount");
+        }
+        if (hours < 1 || hours > config.maxOfferHours()) {
+            throw DomainException.of("contract.invalid_duration", "max", config.maxOfferHours());
+        }
+        Money budget = total(pricePerShare, quantity);
+        return database.inTransaction(tx -> {
+            companies.lockActive(tx, companyId);
+            long open = tx.queryLong("SELECT count(*) FROM share_bids WHERE buyer_uuid = ? AND status = 'OPEN'", buyer);
+            if (open >= config.maxOpenOffers()) {
+                throw DomainException.of("shares.too_many_offers", "max", config.maxOpenOffers());
+            }
+            Instant now = clock.instant();
+            long id = tx.queryLong("""
+                            INSERT INTO share_bids (company_id, buyer_uuid, quantity, remaining, price_per_share, created_at, expires_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+                    companyId, buyer, quantity, quantity, pricePerShare.ore(), now, now.plus(Duration.ofHours(hours)));
+            Account from = economy.requireAccount(tx, AccountOwner.player(buyer));
+            Account escrow = economy.getOrCreateAccount(tx, AccountOwner.shareBid(id), Account.ESCROW);
+            economy.transfer(tx, new TransferRequest(from.id(), escrow.id(), budget, TransactionType.SHARE_BID_ESCROW,
+                    "share-bid-escrow:" + id, buyer, "SHARE_BID", Long.toString(id), null));
+            return findBid(tx, id).orElseThrow();
+        });
+    }
+
+    /**
+     * Sells free shares into a bid and is paid from its escrow (minus the fee). {@code fromTreasury} sells treasury
+     * shares (owner only; proceeds to the company account).
+     */
+    public Trade sellToBid(UUID actor, long bidId, long quantity, boolean fromTreasury) {
+        if (quantity < 1) {
+            throw new DomainException("shares.invalid_quantity");
+        }
+        return database.inTransaction(tx -> {
+            long companyId = tx.queryOne("SELECT company_id FROM share_bids WHERE id = ?", rs -> rs.getLong(1), bidId)
+                    .orElseThrow(() -> new DomainException("shares.bid_not_found"));
+            companies.lockActive(tx, companyId);
+            Bid bid = lockBid(tx, bidId);
+            if (!"OPEN".equals(bid.status()) || !clock.instant().isBefore(bid.expiresAt())) {
+                throw new DomainException("shares.bid_not_open");
+            }
+            Holder seller;
+            if (fromTreasury) {
+                companies.requireRole(tx, companyId, actor, CompanyRole.OWNER);
+                seller = Holder.treasury(companyId);
+            } else {
+                if (actor.equals(bid.buyer())) {
+                    throw new DomainException("shares.own_offer");
+                }
+                seller = Holder.player(actor);
+            }
+            if (quantity > bid.remaining()) {
+                throw DomainException.of("shares.not_enough_offered", "available", bid.remaining());
+            }
+            removeShares(tx, companyId, seller, quantity);
+            Money total = bid.pricePerShare().times(quantity);
+            Money fee = Money.ofOre(Math.multiplyExact(total.ore(), config.feePercent()) / 100);
+            Account escrow = economy.findAccount(tx, AccountOwner.shareBid(bidId), Account.ESCROW).orElseThrow();
+            Account to = economy.requireAccount(tx, seller.account());
+            economy.transfer(tx, new TransferRequest(escrow.id(), to.id(), total, TransactionType.SHARE_PURCHASE, null, actor,
+                    "SHARE_BID", Long.toString(bidId), null));
+            if (fee.isPositive()) {
+                economy.burn(tx, to.id(), fee, TransactionType.SHARE_FEE, null, actor);
+            }
+            addShares(tx, companyId, Holder.player(bid.buyer()), quantity);
+            long remaining = bid.remaining() - quantity;
+            tx.update("UPDATE share_bids SET remaining = ?, status = ?, closed_at = ? WHERE id = ?",
+                    remaining, remaining == 0 ? "FILLED" : "OPEN", remaining == 0 ? clock.instant() : null, bidId);
+            tx.update("""
+                            INSERT INTO share_trades (company_id, bid_id, seller_type, seller_id, buyer_uuid, quantity, price_per_share, total, fee, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    companyId, bidId, seller.type(), seller.id(), bid.buyer(), quantity, bid.pricePerShare().ore(), total.ore(), fee.ore(),
+                    clock.instant());
+            return new Trade(bidId, quantity, total, fee);
+        });
+    }
+
+    public Bid cancelBid(UUID actor, long bidId) {
+        return database.inTransaction(tx -> {
+            long companyId = tx.queryOne("SELECT company_id FROM share_bids WHERE id = ?", rs -> rs.getLong(1), bidId)
+                    .orElseThrow(() -> new DomainException("shares.bid_not_found"));
+            lockCompany(tx, companyId);
+            Bid bid = lockBid(tx, bidId);
+            if (!"OPEN".equals(bid.status())) {
+                throw new DomainException("shares.bid_not_open");
+            }
+            if (!bid.buyer().equals(actor)) {
+                throw new DomainException("shares.not_seller");
+            }
+            closeBid(tx, bid, "CANCELLED");
+            return findBid(tx, bidId).orElseThrow();
+        });
+    }
+
+    private void closeBid(Tx tx, Bid bid, String status) throws SQLException {
+        if (bid.remaining() > 0) {
+            Account escrow = economy.findAccount(tx, AccountOwner.shareBid(bid.id()), Account.ESCROW).orElseThrow();
+            Account buyer = economy.requireAccount(tx, AccountOwner.player(bid.buyer()));
+            economy.transfer(tx, new TransferRequest(escrow.id(), buyer.id(), bid.pricePerShare().times(bid.remaining()),
+                    TransactionType.SHARE_BID_REFUND, "share-bid-refund:" + bid.id(), null, "SHARE_BID", Long.toString(bid.id()), null));
+        }
+        tx.update("UPDATE share_bids SET remaining = 0, status = ?, closed_at = ? WHERE id = ?", status, clock.instant(), bid.id());
+    }
+
+    public Optional<Bid> findBid(long id) {
+        return database.inTransaction(tx -> findBid(tx, id));
+    }
+
+    /** Open bids, highest price first; optionally for one company. */
+    public List<Bid> openBids(Long companyId, int limit) {
+        return database.inTransaction(tx -> tx.queryList(BID_SELECT + """
+                         WHERE b.status = 'OPEN' AND b.expires_at > ? AND c.status = 'ACTIVE' AND (?::bigint IS NULL OR b.company_id = ?)
+                         ORDER BY b.price_per_share DESC, b.id LIMIT ?""",
+                ShareService::mapBid, clock.instant(), companyId, companyId, Math.clamp(limit, 1, 50)));
+    }
+
+    private Optional<Bid> findBid(Tx tx, long id) throws SQLException {
+        return tx.queryOne(BID_SELECT + " WHERE b.id = ?", ShareService::mapBid, id);
+    }
+
+    private Bid lockBid(Tx tx, long id) throws SQLException {
+        tx.queryOne("SELECT id FROM share_bids WHERE id = ? FOR UPDATE", rs -> true, id)
+                .orElseThrow(() -> new DomainException("shares.bid_not_found"));
+        return findBid(tx, id).orElseThrow();
+    }
+
+    private Money total(Money pricePerShare, long quantity) {
+        Money total;
+        try {
+            total = pricePerShare.times(quantity);
+        } catch (ArithmeticException e) {
+            throw DomainException.of("economy.amount_too_large", "max", economy.config().maxTransferAmount());
+        }
+        if (total.isGreaterThan(economy.config().maxTransferAmount())) {
+            throw DomainException.of("economy.amount_too_large", "max", economy.config().maxTransferAmount());
+        }
+        return total;
+    }
+
+    // ------------------------------------------------------------------ expiry
+
     public int expireDue() {
+        int expired = expireOffers();
+        List<Long> bidIds = database.inTransaction(tx -> tx.queryList(
+                "SELECT id FROM share_bids WHERE status = 'OPEN' AND expires_at <= ? ORDER BY expires_at LIMIT 100",
+                rs -> rs.getLong(1), clock.instant()));
+        for (long id : bidIds) {
+            boolean done = database.inTransaction(tx -> {
+                long companyId = tx.queryLong("SELECT company_id FROM share_bids WHERE id = ?", id);
+                lockCompany(tx, companyId);
+                Bid bid = lockBid(tx, id);
+                if (!"OPEN".equals(bid.status()) || bid.expiresAt().isAfter(clock.instant())) {
+                    return false;
+                }
+                closeBid(tx, bid, "EXPIRED");
+                return true;
+            });
+            expired += done ? 1 : 0;
+        }
+        return expired;
+    }
+
+    private int expireOffers() {
         List<Long> ids = database.inTransaction(tx -> tx.queryList(
                 "SELECT id FROM share_offers WHERE status = 'OPEN' AND expires_at <= ? ORDER BY expires_at LIMIT 100",
                 rs -> rs.getLong(1), clock.instant()));
@@ -345,6 +512,10 @@ public final class ShareService {
                 rs -> rs.getLong(1), companyId)) {
             closeOffer(tx, lockOffer(tx, offerId), "CANCELLED");
         }
+        for (Long bidId : tx.queryList("SELECT id FROM share_bids WHERE company_id = ? AND status = 'OPEN' ORDER BY id",
+                rs -> rs.getLong(1), companyId)) {
+            closeBid(tx, lockBid(tx, bidId), "CANCELLED");
+        }
         if (!residual.isPositive()) {
             return;
         }
@@ -398,8 +569,8 @@ public final class ShareService {
     }
 
     /** One row of the share market overview. {@code bestAsk} counts public offers only. */
-    public record Listing(long companyId, String companyName, Money bestAsk, long askQuantity, Money lastPrice, long volume30d,
-                         Money turnover30d) {
+    public record Listing(long companyId, String companyName, Money bestAsk, long askQuantity, Money bestBid, Money lastPrice,
+                          long volume30d, Money turnover30d) {
     }
 
     /**
@@ -414,10 +585,13 @@ public final class ShareService {
                             WITH asks AS (
                                 SELECT company_id, MIN(price_per_share) AS best FROM share_offers
                                 WHERE status = 'OPEN' AND buyer_uuid IS NULL AND expires_at > ? GROUP BY company_id),
+                            bids AS (
+                                SELECT company_id, MAX(price_per_share) AS best FROM share_bids
+                                WHERE status = 'OPEN' AND expires_at > ? GROUP BY company_id),
                             recent AS (
                                 SELECT company_id, SUM(quantity) AS volume, SUM(total) AS turnover FROM share_trades
                                 WHERE created_at >= ? GROUP BY company_id)
-                            SELECT c.id, c.name, a.best,
+                            SELECT c.id, c.name, a.best, bd.best AS best_bid,
                                    (SELECT COALESCE(SUM(o.remaining), 0) FROM share_offers o
                                     WHERE o.company_id = c.id AND o.status = 'OPEN' AND o.buyer_uuid IS NULL AND o.expires_at > ?
                                       AND o.price_per_share = a.best) AS ask_quantity,
@@ -426,18 +600,21 @@ public final class ShareService {
                                    COALESCE(r.volume, 0) AS volume, COALESCE(r.turnover, 0) AS turnover
                             FROM companies c
                             LEFT JOIN asks a ON a.company_id = c.id
+                            LEFT JOIN bids bd ON bd.company_id = c.id
                             LEFT JOIN recent r ON r.company_id = c.id
-                            WHERE c.status = 'ACTIVE' AND (a.best IS NOT NULL OR r.volume IS NOT NULL)
+                            WHERE c.status = 'ACTIVE' AND (a.best IS NOT NULL OR bd.best IS NOT NULL OR r.volume IS NOT NULL)
                             ORDER BY turnover DESC, c.name LIMIT ?""",
                     rs -> {
                         long best = rs.getLong("best");
                         Money bestAsk = rs.wasNull() ? null : Money.ofOre(best);
+                        long bid = rs.getLong("best_bid");
+                        Money bestBid = rs.wasNull() ? null : Money.ofOre(bid);
                         long last = rs.getLong("last_price");
                         Money lastPrice = rs.wasNull() ? null : Money.ofOre(last);
-                        return new Listing(rs.getLong("id"), rs.getString("name"), bestAsk, rs.getLong("ask_quantity"), lastPrice,
+                        return new Listing(rs.getLong("id"), rs.getString("name"), bestAsk, rs.getLong("ask_quantity"), bestBid, lastPrice,
                                 rs.getLong("volume"), Money.ofOre(rs.getLong("turnover")));
                     },
-                    now, since, now, Math.clamp(limit, 1, 30));
+                    now, now, since, now, Math.clamp(limit, 1, 30));
         });
     }
 
@@ -544,6 +721,19 @@ public final class ShareService {
             LEFT JOIN players sp ON o.seller_type = 'PLAYER' AND sp.uuid::text = o.seller_id
             LEFT JOIN players bp ON bp.uuid = o.buyer_uuid
             """;
+
+    private static final String BID_SELECT = """
+            SELECT b.*, c.name AS company_name, p.name AS buyer_name
+            FROM share_bids b
+            JOIN companies c ON c.id = b.company_id
+            JOIN players p ON p.uuid = b.buyer_uuid
+            """;
+
+    private static Bid mapBid(ResultSet rs) throws SQLException {
+        return new Bid(rs.getLong("id"), rs.getLong("company_id"), rs.getString("company_name"), Tx.uuid(rs, "buyer_uuid"),
+                rs.getString("buyer_name"), rs.getLong("remaining"), Money.ofOre(rs.getLong("price_per_share")),
+                Tx.instant(rs, "expires_at"), rs.getString("status"));
+    }
 
     private static Position mapPosition(ResultSet rs) throws SQLException {
         return new Position(rs.getLong("company_id"), rs.getString("company_name"), HolderType.valueOf(rs.getString("holder_type")),

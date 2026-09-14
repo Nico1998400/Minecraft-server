@@ -62,6 +62,18 @@ public final class ShareCommands {
                                 .then(Commands.argument("quantity", LongArgumentType.longArg(1)).executes(this::buy))))
                 .then(Commands.literal("cancel")
                         .then(Commands.argument("offer", LongArgumentType.longArg(1)).executes(this::cancel)))
+                .then(Commands.literal("bid")
+                        .then(Commands.argument("company", StringArgumentType.word())
+                                .then(Commands.argument("quantity", LongArgumentType.longArg(1))
+                                        .then(Commands.argument("price", StringArgumentType.word()).executes(this::bid)))))
+                .then(Commands.literal("bids")
+                        .executes(c -> bids(c, null))
+                        .then(Commands.argument("company", StringArgumentType.greedyString())
+                                .executes(c -> bids(c, StringArgumentType.getString(c, "company")))))
+                .then(sellToBranch("sell-to", false))
+                .then(sellToBranch("sell-treasury-to", true))
+                .then(Commands.literal("cancel-bid")
+                        .then(Commands.argument("bid", LongArgumentType.longArg(1)).executes(this::cancelBid)))
                 .then(Commands.literal("dividend")
                         .then(Commands.argument("amount", StringArgumentType.word()).executes(this::dividend)))
                 .build();
@@ -152,6 +164,7 @@ public final class ShareCommands {
             for (ShareService.Listing l : listings) {
                 svc.messages().send(sender, "shares.market.entry", "company", l.companyName(), "id", l.companyId(),
                         "ask", l.bestAsk() == null ? "-" : l.bestAsk(), "ask_quantity", l.askQuantity(),
+                        "bid", l.bestBid() == null ? "-" : l.bestBid(),
                         "last", l.lastPrice() == null ? "-" : l.lastPrice(), "volume", l.volume30d(), "turnover", l.turnover30d());
             }
         });
@@ -250,6 +263,73 @@ public final class ShareCommands {
         long offerId = LongArgumentType.getLong(c, "offer");
         svc.tasks().run(player, () -> svc.core().shares().cancel(uuid, offerId),
                 offer -> svc.messages().send(player, "shares.cancelled", "id", offer.id()));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> sellToBranch(String literal, boolean treasury) {
+        return Commands.literal(literal)
+                .then(Commands.argument("bid", LongArgumentType.longArg(1))
+                        .then(Commands.argument("quantity", LongArgumentType.longArg(1)).executes(c -> sellToBid(c, treasury))));
+    }
+
+    private int bid(CommandContext<CommandSourceStack> c) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        String ref = StringArgumentType.getString(c, "company");
+        long quantity = LongArgumentType.getLong(c, "quantity");
+        String priceInput = StringArgumentType.getString(c, "price");
+        svc.tasks().run(player, () -> svc.core().shares().bid(uuid, svc.core().companies().requireByRef(ref).id(), quantity,
+                        Money.parsePositive(priceInput), svc.core().shares().config().maxOfferHours()),
+                bid -> svc.messages().send(player, "shares.bid_placed", "id", bid.id(), "quantity", bid.remaining(), "company", bid.companyName(),
+                        "price", bid.pricePerShare(), "total", bid.pricePerShare().times(bid.remaining())));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int bids(CommandContext<CommandSourceStack> c, String ref) {
+        var sender = c.getSource().getSender();
+        svc.tasks().run(sender, () -> {
+            Long companyId = ref == null ? null : svc.core().companies().requireByRef(ref).id();
+            return svc.core().shares().openBids(companyId, 15);
+        }, bids -> {
+            if (bids.isEmpty()) {
+                svc.messages().send(sender, "shares.bids.empty");
+                return;
+            }
+            svc.messages().send(sender, "shares.bids.header");
+            for (ShareService.Bid b : bids) {
+                svc.messages().send(sender, "shares.bids.entry", "id", b.id(), "company", b.companyName(), "quantity", b.remaining(),
+                        "price", b.pricePerShare(), "buyer", b.buyerName(), "expires", b.expiresAt());
+            }
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int sellToBid(CommandContext<CommandSourceStack> c, boolean treasury) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        long bidId = LongArgumentType.getLong(c, "bid");
+        long quantity = LongArgumentType.getLong(c, "quantity");
+        svc.tasks().run(player, () -> svc.core().shares().sellToBid(uuid, bidId, quantity, treasury),
+                trade -> svc.messages().send(player, "shares.sold", "quantity", trade.quantity(), "total", trade.total(),
+                        "fee", trade.fee(), "id", bidId));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int cancelBid(CommandContext<CommandSourceStack> c) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        long bidId = LongArgumentType.getLong(c, "bid");
+        svc.tasks().run(player, () -> svc.core().shares().cancelBid(uuid, bidId),
+                bid -> svc.messages().send(player, "shares.bid_cancelled", "id", bid.id()));
         return Command.SINGLE_SUCCESS;
     }
 

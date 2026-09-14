@@ -141,6 +141,10 @@ Ownership of a company's **value** is separate from **control** (the OWNER role,
   escrowed so they cannot be sold twice; buyers may take part of an offer. The seller pays a 1 % fee that is destroyed,
   so wash trading to fake a price costs money. There is no central exchange or order matching — offers are
   peer-to-peer listings, in the spirit of "no auction house"; a real stock market (#43) can build on this later.
+- **Bids:** a player can bid for shares at a price; price × quantity is escrowed. Holders (or the owner, from the
+  treasury) sell into the bid and are paid from escrow minus the fee; the rest is refunded on cancel, expiry or when
+  the company closes. Offers (asks) and bids together are a player-run order book; `/shares market` shows best bid,
+  best ask, last price and volume.
 - **Dividends:** the owner pays an amount from the company account, split equally per share among all shares outside
   the treasury (listed shares included); undivisible öre stay in the company. Blocked while wages are owed.
 - **Protection of shareholders:** while anyone other than the owner holds shares, the owner **cannot withdraw** company

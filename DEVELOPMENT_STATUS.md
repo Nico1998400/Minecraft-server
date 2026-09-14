@@ -10,7 +10,7 @@ logistics, warehouses and industry done. **P4 in progress:** shares, dividends a
 - Paper 26.2 build 123 (STABLE) — requires Java 25
 - Java 25 (Temurin, auto-provisioned by Gradle toolchain); Gradle 9.7.1 wrapper
 - PostgreSQL 18 via `docker compose` for dev; embedded PostgreSQL 18 for tests (works on Windows, no Docker)
-- Plugin verified on a real Paper 26.2 server after every feature: loads, migrates (V1–V15), commands respond, clean shutdown
+- Plugin verified on a real Paper 26.2 server after every feature: loads, migrates (V1–V15; V16 tested only in the embedded test database so far), commands respond, clean shutdown
 - **Not verified with a real game client** (none available in the dev environment). Gameplay listeners and GUIs
   (XP from blocks, duty payroll, deliveries, shop chests, trade window, work sites, protection) are covered by domain
   tests only. First playtest should focus on: trade window clicks, shop purchase flow, work-site drops, protection.
@@ -62,16 +62,19 @@ logistics, warehouses and industry done. **P4 in progress:** shares, dividends a
       shareholders block owner withdrawals and receive closing equity pro rata; `/shares` (`/aktier`)
 - [x] Share market overview `/shares market` (best public ask, last price, 30-day volume/turnover per company — an
       aggregation of player offers, no central order book or market maker); shareholdings in `/profile`
-- [x] 190 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+- [x] Share bids (V16): escrowed buy-side bids (`SHARE_BID` escrow accounts), sellers fill with free or treasury shares,
+      refunds on cancel/expiry/company close; best bid in `/shares market`; `/shares bid|bids|sell-to|sell-treasury-to|cancel-bid`.
+      Asks + bids = peer-to-peer order book (no matching engine, no market maker)
+- [x] 193 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
 2. **P4 #45 company investments:** let companies hold shares of other companies (holder type `COMPANY`), with the
    extraction risk in mind (a company buying an accomplice's shares at an inflated price). Consider a price guard
    (e.g. max multiple of book value) or requiring no outside shareholders in the buying company.
-3. **P4 #43 stock market, bids:** escrowed buy-side share bids (money escrowed like buy orders) so sellers can hit a
-   bid; together with asks this forms a peer-to-peer order book. No NPC market maker, no money creation.
+3. Smoke-test V16 on the dev Paper server (not yet done for share bids; domain tests pass).
 4. GUI menus for common flows (job board, company management) — optional polish.
+5. Then P5 planning (society: crime, police, government) — only after a playtest confirms P0–P2 work in-game.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.

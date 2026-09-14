@@ -184,6 +184,98 @@ class ShareServiceTest extends CoreTest {
     }
 
     @Test
+    void bidsEscrowMoneyAndSellersArePaidFromEscrow() {
+        Money investorBefore = balance(investor);
+        var bid = shares.bid(investor, company.id(), 100, Money.ofSek(5), 24);
+        assertThat(balance(investor)).isEqualTo(investorBefore.minus(Money.ofSek(500)));
+        assertDomainError(() -> shares.sellToBid(investor, bid.id(), 1, false), "shares.own_offer");
+        assertDomainError(() -> shares.sellToBid(player("Nobody"), bid.id(), 1, false), "shares.insufficient");
+        assertDomainError(() -> shares.bid(investor, company.id(), 1, Money.ofOre(Long.MAX_VALUE / 2), 24), "economy.amount_too_large");
+
+        Money ownerBefore = balance(owner);
+        var trade = shares.sellToBid(owner, bid.id(), 60, false);
+        assertThat(trade.total()).isEqualTo(Money.ofSek(300));
+        assertThat(balance(owner)).isEqualTo(ownerBefore.plus(Money.ofSek(297)));
+        assertThat(held(investor)).isEqualTo(60);
+        assertThat(held(owner)).isEqualTo(940);
+        assertDomainError(() -> shares.sellToBid(owner, bid.id(), 41, false), "shares.not_enough_offered");
+
+        // Treasury shares can fill a bid too: the money goes to the company.
+        shares.issue(owner, company.id(), 10);
+        Money companyBefore = core.companies().balance(company.id());
+        shares.sellToBid(owner, bid.id(), 10, true);
+        assertThat(core.companies().balance(company.id())).isEqualTo(companyBefore.plus(Money.ofOre(4_950)));
+
+        assertDomainError(() -> shares.cancelBid(owner, bid.id()), "shares.not_seller");
+        shares.cancelBid(investor, bid.id());
+        assertThat(balance(investor)).isEqualTo(investorBefore.minus(Money.ofSek(350)));
+        assertDomainError(() -> shares.sellToBid(owner, bid.id(), 1, false), "shares.bid_not_open");
+        assertThat(shares.market(10).getFirst().lastPrice()).isEqualTo(Money.ofSek(5));
+        assertLedgerHealthy();
+    }
+
+    @Test
+    void bidsExpireAndAreRefundedWhenTheCompanyCloses() {
+        UUID other = player("Other");
+        grant(other, 1_000);
+        var expiring = shares.bid(investor, company.id(), 10, Money.ofSek(1), 1);
+        var longBid = shares.bid(other, company.id(), 10, Money.ofSek(2), 48);
+        assertThat(shares.market(10).getFirst().bestBid()).isEqualTo(Money.ofSek(2));
+        assertThat(shares.openBids(company.id(), 10)).extracting(ShareService.Bid::id).containsExactly(longBid.id(), expiring.id());
+
+        clock.advance(Duration.ofHours(2));
+        Money investorBefore = balance(investor);
+        assertThat(shares.expireDue()).isEqualTo(1);
+        assertThat(balance(investor)).isEqualTo(investorBefore.plus(Money.ofSek(10)));
+        assertThat(shares.findBid(expiring.id()).orElseThrow().status()).isEqualTo("EXPIRED");
+
+        Money otherBefore = balance(other);
+        core.companies().dissolve(owner, company.id());
+        assertThat(balance(other)).isEqualTo(otherBefore.plus(Money.ofSek(20)));
+        assertThat(shares.findBid(longBid.id()).orElseThrow().status()).isEqualTo("CANCELLED");
+        assertLedgerHealthy();
+    }
+
+    @Test
+    void concurrentSellersCannotOverfillABid() throws Exception {
+        var bid = shares.bid(investor, company.id(), 10, Money.ofSek(1), 24);
+        int threads = 6;
+        List<UUID> sellers = new ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            UUID s = player("Seller" + i);
+            var offer = shares.offer(owner, company.id(), false, 4, Money.ofSek(1), s, 24);
+            grant(s, 100);
+            shares.buy(s, offer.id(), 4);
+            sellers.add(s);
+        }
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Boolean>> results = new ArrayList<>();
+        for (UUID s : sellers) {
+            results.add(pool.submit(() -> {
+                start.await();
+                try {
+                    shares.sellToBid(s, bid.id(), 4, false);
+                    return true;
+                } catch (DomainException e) {
+                    return false;
+                }
+            }));
+        }
+        start.countDown();
+        int succeeded = 0;
+        for (Future<Boolean> r : results) {
+            succeeded += r.get() ? 1 : 0;
+        }
+        pool.shutdown();
+        assertThat(succeeded).isEqualTo(2);
+        assertThat(held(investor)).isEqualTo(8);
+        assertThat(shares.findBid(bid.id()).orElseThrow().remaining()).isEqualTo(2);
+        assertThat(shares.valuation(company.id()).totalShares()).isEqualTo(1_000);
+        assertLedgerHealthy();
+    }
+
+    @Test
     void solventBankruptcyPaysTheResidualToShareholders() {
         UUID lender = player("Lender");
         grant(lender, 5_000);

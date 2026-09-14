@@ -73,6 +73,9 @@ public enum TransactionType {
     SHARE_PURCHASE,
     /** Share sale fee (sink). */
     SHARE_FEE,
+    /** Share bid budget moved into escrow / unfilled escrow returned to the bidder. */
+    SHARE_BID_ESCROW,
+    SHARE_BID_REFUND,
     /** Company pays a dividend to a shareholder. */
     DIVIDEND
 }
