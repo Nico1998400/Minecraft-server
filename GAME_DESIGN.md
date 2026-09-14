@@ -116,7 +116,19 @@ Changes are recorded as events (auditable, idempotent).
 ## 8. Company risk
 
 Wages owed are real obligations. A company with high salaries and poor sales runs out of money, accumulates arrears
-and loses reputation (fewer applicants). Bankruptcy procedure is P3; the `status` field and arrears ledger exist now.
+and loses reputation (fewer applicants).
+
+**Loans (implemented, no money creation):** a player or company owner offers a loan (principal, interest %, number of
+installments, interval) to a player or company; the borrower accepts and the principal moves. The system collects
+installments automatically (partial payments count). Each installment overdue beyond the grace period costs
+reputation once; `default-after-overdue-installments` overdue installments (or all, for short loans) is a default.
+
+**Bankruptcy (implemented):** a company that defaults — or whose owner declares voluntary bankruptcy while indebted —
+is wound down in one transaction: contracts and buy orders are cancelled (escrow returns), properties are seized back
+to the market (shops close), **wage arrears are paid first**, the remainder is shared pro rata among loan creditors,
+any residual after full payment goes to the owner, all staff are released, the company becomes BANKRUPT, the owner
+loses 15 reputation, and a `bankruptcies` record keeps the story. A defaulting *player* keeps paying from future
+income with a damaged reputation.
 
 ## 9. Contracts
 
@@ -165,6 +177,13 @@ deliveries — and outputs return there after `seconds × batches`, ready for sh
 
 This completes the first full chain: miners (work site) → raw ore in company inventory → factory run by an engineer →
 ingots → toolworks → tools in a shop chest → bought by players.
+
+## 10c. Market statistics
+
+`/market <item>` shows the volume-weighted average price per item over the last 7 days from shop sales and buy-order
+fills, the trend versus the previous 7 days, the cheapest open shop listing and the best open buy order.
+`/market top` lists the most traded goods by value. Statistics come only from real player trades — they inform
+decisions and will feed dynamic news and company valuation later.
 
 ## 11. NPC money (future)
 

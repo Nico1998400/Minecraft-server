@@ -21,6 +21,8 @@ PostgreSQL 18 (dev via docker compose, tests via embedded PostgreSQL). Access th
 | V7 | `settlements`, `settlement_members`, `settlement_invites`, `settlement_tier_history` |
 | V8 | `trades` (unique token) |
 | V9 | `buy_orders`, `buy_order_fills` (unique token); `ORDER` account owner type |
+| V10 | `item_stash.pristine`, `production_runs` |
+| V11 | `loans`, `loan_payments`, `bankruptcies`; `BANKRUPTCY` employee end reason |
 
 ## Global conventions
 
@@ -132,6 +134,16 @@ Money transfers reference the trade id and use keys `trade:<token>:ab|ba`.
 ### buy_orders / buy_order_fills
 Issuer player or company; `quantity`, `filled ≤ quantity`, `unit_price`; escrow account `ORDER:<id>:ESCROW`.
 Each fill has a unique `token`, the quantity and payout.
+
+### production_runs
+Company, recipe id, batches, operator, `RUNNING|COMPLETED`, `finishes_at` (from the service clock). Inputs are consumed
+from pristine company stash rows at start (partial rows re-created with the item codec); outputs deposited on completion.
+
+### loans / loan_payments / bankruptcies
+`loans`: lender and borrower (`PLAYER|COMPANY` + id, never equal), principal, total repayment, repaid, schedule
+(installments, interval hours), status `OFFERED|ACTIVE|REPAID|DEFAULTED|DECLINED|WITHDRAWN|SETTLED_IN_BANKRUPTCY`,
+`accepted_at` (schedule anchor). `loan_payments` records every installment/early/bankruptcy payment with its ledger
+transaction. `bankruptcies` (one per company) records assets, wages paid, creditors paid, unpaid debt, properties seized.
 
 ## Invariants (verified by `/eco audit` and tests)
 

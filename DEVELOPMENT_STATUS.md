@@ -3,8 +3,7 @@
 _Last updated: 2026-09-14_
 
 ## Current phase
-**P0 complete. P1 complete. P2 (player economy) feature-complete for the MVP.**
-Remaining P2 work is polish (GUIs, basic production). Next major phase: **P3 — advanced economy**.
+**P0, P1, P2 complete (MVP). P3 in progress:** market statistics, loans and bankruptcy done.
 
 ## Environment verified
 - Paper 26.2 build 123 (STABLE) — requires Java 25
@@ -40,16 +39,23 @@ Remaining P2 work is polish (GUIs, basic production). Next major phase: **P3 —
 - [x] Basic production (V10): recipes in `production.yml`, FACTORY capacity, engineer operators, Engineering XP,
       pristine stash consumption via `ItemCodec`, `/production`
 - [x] Domain event bus; ledger shows player and company counterparties
-- [x] 157 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+
+### P3 — Advanced economy
+- [x] Market statistics: `/market <item>`, `/market top` (7-day volume-weighted prices, trend, best offers)
+- [x] Loans (V11): player/company lending, automatic collection, late penalties, default; `/loan`
+- [x] Company bankruptcy: orderly wind-down (escrows, property seizure, wages first, pro-rata creditors); `/company bankrupt`
+- [x] 167 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-2. **P3 — dynamic market statistics**: price index per material from `shop_sales`, `buy_order_fills`, contract
-   deliveries; `/market <item>` showing recent average prices and volume (no trading from the command).
-3. **P3 — banking & loans**: company loans from a bank entity with interest and repayment schedule; bankruptcy
-   procedure using `companies.status = BANKRUPT` and wage arrears.
-4. **Rent/lease for properties** (landlord income): monthly rent paid from tenant to owner with eviction on default.
-5. GUI menus for common flows (job board, company management) — optional polish.
+2. **Rent/lease for properties** (landlord income): periodic rent from tenant to owner, tenant build rights,
+   eviction on non-payment (reuse the loan collection pattern).
+3. **Logistics (P3 #38)**: transport contracts that require carrying goods physically between two locations
+   (pickup chest → delivery chest), Logistics XP for carriers.
+4. **Warehouses (P3 #39)**: WAREHOUSE properties raise a company's stash capacity; introduce stash capacity limits.
+5. **Company finance dashboard**: `/company finance` — revenue (shop sales, order fills, contract payouts),
+   expenses (wages, fees, loans) over 7/30 days from the ledger. Foundation for valuation (P4).
+6. GUI menus for common flows (job board, company management) — optional polish.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.
