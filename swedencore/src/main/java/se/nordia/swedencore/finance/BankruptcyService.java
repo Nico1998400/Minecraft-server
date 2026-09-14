@@ -30,7 +30,7 @@ import java.util.UUID;
  *
  * <p>Procedure, in one transaction:
  * <ol>
- *   <li>Cancel open contracts and buy orders — their escrow returns to the company account.</li>
+ *   <li>Cancel open contracts, buy orders and OPEN transports — their escrow returns to the company account.</li>
  *   <li>Seize company properties back to the market (shops close).</li>
  *   <li>Pay wage arrears first (employees are senior creditors).</li>
  *   <li>Distribute what remains pro rata to loan creditors by outstanding amount.</li>
@@ -55,6 +55,7 @@ public final class BankruptcyService {
     private final BuyOrderService orders;
     private final PropertyService properties;
     private final se.nordia.swedencore.properties.LeaseService leases;
+    private final se.nordia.swedencore.logistics.TransportService transports;
     private final ReputationService reputation;
     private final DomainEvents events;
     private final Clock clock;
@@ -63,7 +64,9 @@ public final class BankruptcyService {
     public BankruptcyService(Database database, EconomyService economy, CompanyService companies, PayrollService payroll,
                              ContractService contracts, BuyOrderService orders, PropertyService properties,
                              se.nordia.swedencore.properties.LeaseService leases,
+                             se.nordia.swedencore.logistics.TransportService transports,
                              ReputationService reputation, DomainEvents events, Clock clock, int ownerReputationPenalty) {
+        this.transports = transports;
         this.database = database;
         this.economy = economy;
         this.companies = companies;
@@ -109,6 +112,7 @@ public final class BankruptcyService {
 
             contracts.closeAllForCompany(tx, companyId);
             orders.closeAllForCompany(tx, companyId);
+            transports.closeOpenForCompany(tx, companyId);
             List<Long> seized = new java.util.ArrayList<>(leases.endAllForTenantCompany(tx, companyId));
             seized.addAll(properties.seizeAllForCompany(tx, companyId));
 

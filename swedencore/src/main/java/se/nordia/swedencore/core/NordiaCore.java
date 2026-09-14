@@ -92,12 +92,12 @@ public final class NordiaCore {
         this.profiles = new ProfileService(database, economy, skills);
         this.production = new ProductionService(database, companies, stash, skills, config.production(), clock);
         this.market = new MarketService(database, clock, java.time.Duration.ofDays(7));
-        this.bankruptcy = new BankruptcyService(database, economy, companies, payroll, contracts, orders, properties, leases, reputation,
-                events, clock, -15);
-        this.loans = new LoanService(database, economy, companies, reputation, bankruptcy, config.loans(), clock);
-        this.companyFinance = new CompanyFinanceService(database, economy, companies, payroll);
         this.transports = new se.nordia.swedencore.logistics.TransportService(database, economy, companies, stash, skills, reputation,
                 se.nordia.swedencore.logistics.TransportService.Config.defaults(), clock);
+        this.bankruptcy = new BankruptcyService(database, economy, companies, payroll, contracts, orders, properties, leases, transports,
+                reputation, events, clock, -15);
+        this.loans = new LoanService(database, economy, companies, reputation, bankruptcy, config.loans(), clock);
+        this.companyFinance = new CompanyFinanceService(database, economy, companies, payroll);
     }
 
     public se.nordia.swedencore.logistics.TransportService transports() {

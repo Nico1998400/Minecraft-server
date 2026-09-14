@@ -284,6 +284,25 @@ public final class TransportService {
         return expired;
     }
 
+    /**
+     * Bankruptcy: OPEN transports of the company are cancelled and their reward escrow returns to the company account so
+     * creditors are paid from it. The reserved cargo is forfeited together with the rest of the company stash.
+     * IN_TRANSIT jobs stay: the carrier holds collateral and can still deliver and be paid from escrow.
+     */
+    public int closeOpenForCompany(Tx tx, long companyId) throws SQLException {
+        List<Long> ids = tx.queryList("SELECT id FROM transports WHERE issuer_company_id = ? AND status = 'OPEN' ORDER BY id FOR UPDATE",
+                rs -> rs.getLong(1), companyId);
+        for (long id : ids) {
+            Transport t = find(tx, id).orElseThrow();
+            Account target = economy.requireAccount(tx, AccountOwner.company(companyId));
+            Account escrow = economy.findAccount(tx, AccountOwner.transport(id), Account.ESCROW).orElseThrow();
+            economy.transfer(tx, new TransferRequest(escrow.id(), target.id(), t.reward(), TransactionType.TRANSPORT_REFUND,
+                    "transport-refund:" + id, null, "TRANSPORT", Long.toString(id), null));
+            tx.update("UPDATE transports SET status = 'CANCELLED', closed_at = now() WHERE id = ?", id);
+        }
+        return ids.size();
+    }
+
     private void returnToIssuer(Tx tx, Transport t, ItemStashService.ItemCodec codec) throws SQLException {
         Account target = economy.requireAccount(tx, issuerAccount(t));
         Account escrow = economy.findAccount(tx, AccountOwner.transport(t.id()), Account.ESCROW).orElseThrow();

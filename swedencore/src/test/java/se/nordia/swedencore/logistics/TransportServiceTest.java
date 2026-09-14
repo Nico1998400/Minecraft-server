@@ -117,4 +117,29 @@ class TransportServiceTest extends CoreTest {
         assertThat(balance(issuer)).isEqualTo(Money.ofSek(21_000 - 40));
         assertDomainError(() -> transports.pickUp(carrier, t.id(), UUID.randomUUID()), "transport.not_open");
     }
+
+    @Test
+    void bankruptcyReturnsOpenTransportEscrowToCreditors() {
+        var company = core.companies().found(issuer, "Frakt AB");
+        core.database().inTransactionVoid(tx -> core.stash().deposit(tx, ItemStashService.Owner.company(company.id()),
+                List.of(new ItemStashService.StashItem("IRON_INGOT", 64, CODEC.pristine("IRON_INGOT", 64), true)), "TEST", null));
+        UUID lender = player("Lender");
+        grant(lender, 5_000);
+        var loan = core.loans().offer(lender, se.nordia.swedencore.finance.LoanService.Party.player(lender),
+                se.nordia.swedencore.finance.LoanService.Party.company(company.id()), Money.ofSek(1_000), 10, 2, 24);
+        core.loans().accept(issuer, loan.id());
+        core.companies().deposit(issuer, company.id(), Money.ofSek(3_000));
+        var t = transports.create(issuer, company.id(), "IRON_INGOT", 64, Money.ofSek(2_000), Money.ZERO, PICKUP, DEST, 24, CODEC);
+        assertThat(core.companies().balance(company.id())).isEqualTo(Money.ofSek(1_960));
+
+        var result = core.bankruptcy().declare(company.id(), se.nordia.swedencore.finance.BankruptcyService.Reason.VOLUNTARY, issuer);
+        assertThat(result.assets()).isEqualTo(Money.ofSek(3_960));
+        assertThat(result.paidCreditors()).isEqualTo(Money.ofSek(1_100));
+        assertThat(transports.find(t.id()).orElseThrow().status()).isEqualTo(TransportService.Status.CANCELLED);
+        assertThat(core.database().inTransaction(tx -> core.economy().findAccount(tx,
+                se.nordia.swedencore.economy.AccountOwner.transport(t.id()), se.nordia.swedencore.economy.Account.ESCROW))
+                .orElseThrow().balance()).isEqualTo(Money.ZERO);
+        assertDomainError(() -> transports.pickUp(carrier, t.id(), UUID.randomUUID()), "transport.not_open");
+        assertLedgerHealthy();
+    }
 }

@@ -51,7 +51,7 @@ logistics and warehouses done.
 - [x] Logistics (V13): transport jobs with physical pickup/delivery, collateral, Logistics XP; `/transports`, `/transport`
 - [x] Warehouses: stash capacity in stacks (config `storage`), +1 080 per occupied WAREHOUSE; enforced on voluntary
       inflows under a per-stash advisory lock; `/stash` shows used/capacity
-- [x] 178 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+- [x] 179 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
@@ -67,8 +67,9 @@ logistics and warehouses done.
 - Trade window money buttons adjust in 100 / 1 000 / 10 000 SEK steps (chat cannot be opened in a container GUI).
 - Buy orders can be filled from anywhere (goods delivered to the issuer's stash). Logistics (P3) may later require
   physical transport.
-- Bankruptcy does not cancel the company's OPEN transport jobs; they expire later and refund into the (empty) bankrupt
-  company account. Carriers IN_TRANSIT can still deliver and get paid from escrow.
+- Bankruptcy cancels OPEN transport jobs (reward escrow goes to creditors; reserved cargo is forfeited with the company
+  stash, which nobody can claim once all memberships end). IN_TRANSIT jobs stay: carriers can still deliver and be
+  paid; if they fail, reward and collateral refund into the closed company account (effectively a sink).
 - Stash capacity is not enforced on transport delivery, shop/trade fallbacks or refunds (by design: never lose items).
   A stash can therefore exceed capacity; it then only blocks new voluntary inflows until items are claimed.
 - Work-site output that overflows to the worker is not announced in chat yet.
