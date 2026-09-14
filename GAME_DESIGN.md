@@ -194,6 +194,11 @@ in the ledger, and never the best deal for goods players can supply.
 
 - Properties: typed (apartment, house, shop, office, factory, warehouse, industrial land, farm, mine), bounded region,
   owner (player/company), city/settlement, price, status (available/owned/rented), market value.
+- **Renting (implemented):** owners list a property for rent (price per period). A player or company rents it, paying
+  the first period immediately, and becomes the **occupant** — exclusive build rights, and the right to run shops,
+  factories and work sites there. Rent is collected automatically each period; unpaid rent makes the lease overdue and
+  after a grace period the tenant is evicted (−5 reputation). Tenants can move out any time; owners can end a lease at
+  the end of the paid period. Leased property cannot be sold; a new owner is not bound by old leases.
 - Cities: 1–3 predefined (Stockholm, Göteborg, Helsingborg) with treasury accounts; property sales pay the city.
 - Settlements (implemented): founded in the wilderness for a cost (sink). Placement keeps room for the largest tier
   (plus a buffer) from cities and other settlements. Residents join by invite (one settlement per player); land within

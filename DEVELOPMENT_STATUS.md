@@ -3,7 +3,7 @@
 _Last updated: 2026-09-14_
 
 ## Current phase
-**P0, P1, P2 complete (MVP). P3 in progress:** market statistics, loans and bankruptcy done.
+**P0, P1, P2 complete (MVP). P3 in progress:** market statistics, loans, bankruptcy, company finance and renting done.
 
 ## Environment verified
 - Paper 26.2 build 123 (STABLE) — requires Java 25
@@ -44,18 +44,18 @@ _Last updated: 2026-09-14_
 - [x] Market statistics: `/market <item>`, `/market top` (7-day volume-weighted prices, trend, best offers)
 - [x] Loans (V11): player/company lending, automatic collection, late penalties, default; `/loan`
 - [x] Company bankruptcy: orderly wind-down (escrows, property seizure, wages first, pro-rata creditors); `/company bankrupt`
-- [x] 167 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+- [x] Company finance report: `/company finance` (income statement, balance sheet, equity)
+- [x] Property renting (V12): listings, tenancy with exclusive use, rent collection, eviction; occupant concept used by
+      protection, shops, production and work sites; `/property rentals|rent-out|rent|move-out|end-lease`
+- [x] 172 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-2. **Rent/lease for properties** (landlord income): periodic rent from tenant to owner, tenant build rights,
-   eviction on non-payment (reuse the loan collection pattern).
+2. Load `LeaseService.Config` from config.yml (currently defaults in `NordiaCore`: 24–720 h periods, 24 h grace, −5 rep).
 3. **Logistics (P3 #38)**: transport contracts that require carrying goods physically between two locations
    (pickup chest → delivery chest), Logistics XP for carriers.
 4. **Warehouses (P3 #39)**: WAREHOUSE properties raise a company's stash capacity; introduce stash capacity limits.
-5. **Company finance dashboard**: `/company finance` — revenue (shop sales, order fills, contract payouts),
-   expenses (wages, fees, loans) over 7/30 days from the ledger. Foundation for valuation (P4).
-6. GUI menus for common flows (job board, company management) — optional polish.
+5. GUI menus for common flows (job board, company management) — optional polish.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.

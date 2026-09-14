@@ -23,6 +23,7 @@ PostgreSQL 18 (dev via docker compose, tests via embedded PostgreSQL). Access th
 | V9 | `buy_orders`, `buy_order_fills` (unique token); `ORDER` account owner type |
 | V10 | `item_stash.pristine`, `production_runs` |
 | V11 | `loans`, `loan_payments`, `bankruptcies`; `BANKRUPTCY` employee end reason |
+| V12 | `property_leases` (one open lease per property), `lease_payments` |
 
 ## Global conventions
 
@@ -144,6 +145,12 @@ from pristine company stash rows at start (partial rows re-created with the item
 (installments, interval hours), status `OFFERED|ACTIVE|REPAID|DEFAULTED|DECLINED|WITHDRAWN|SETTLED_IN_BANKRUPTCY`,
 `accepted_at` (schedule anchor). `loan_payments` records every installment/early/bankruptcy payment with its ledger
 transaction. `bankruptcies` (one per company) records assets, wages paid, creditors paid, unpaid debt, properties seized.
+
+### property_leases / lease_payments
+`LISTED` (rental offer) → `ACTIVE` (tenant set, `paid_until`) ↔ `OVERDUE` (`overdue_since`) → `ENDED` (`end_reason`
+TENANT, OWNER, EVICTED, OWNERSHIP_CHANGE, TENANT_BANKRUPT) or `CANCELLED`. Partial unique index allows one open lease per
+property. `ends_at` marks an owner-ended lease that stops at the paid period. The **occupant** of a property is the
+tenant of its ACTIVE/OVERDUE lease, otherwise the owner (`PropertyService.SELECT` joins the lease).
 
 ## Invariants (verified by `/eco audit` and tests)
 

@@ -50,8 +50,9 @@ hooks (dissolution checks, ownership hooks, placement checks) instead of cyclic 
 
 ### Cross-module hooks
 Later modules must be able to veto or react to earlier ones without the earlier module knowing about them:
-`CompanyService.addDissolutionCheck` (contracts, properties, orders), `PropertyService.addOwnershipChangeHook` (shops),
-`CityService.addPlacementCheck` (settlements). Hooks run inside the caller's transaction.
+`CompanyService.addDissolutionCheck` (contracts, properties, orders, leases), `PropertyService.addOwnershipChangeHook`
+(leases end on a new owner), `PropertyService.addOccupancyChangeHook` (shops close when the occupant changes — sale,
+seizure, tenancy start/end), `CityService.addPlacementCheck` (settlements). Hooks run inside the caller's transaction.
 
 ## Key decisions and why
 
