@@ -15,6 +15,7 @@ import se.nordia.swedencore.economy.EconomyService;
 import se.nordia.swedencore.jobs.JobService;
 import se.nordia.swedencore.jobs.PayrollService;
 import se.nordia.swedencore.player.PlayerService;
+import se.nordia.swedencore.player.ProfileService;
 import se.nordia.swedencore.reputation.ReputationService;
 import se.nordia.swedencore.skills.SkillService;
 
@@ -50,6 +51,7 @@ public final class NordiaCore {
     private final SettlementService settlements;
     private final TradeService trades;
     private final BuyOrderService orders;
+    private final ProfileService profiles;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -73,6 +75,11 @@ public final class NordiaCore {
         this.settlements = new SettlementService(database, economy, cities, events, config.settlements(), clock);
         this.trades = new TradeService(database, economy);
         this.orders = new BuyOrderService(database, economy, companies, stash, config.orders(), clock);
+        this.profiles = new ProfileService(database, economy, skills);
+    }
+
+    public ProfileService profiles() {
+        return profiles;
     }
 
     public BuyOrderService orders() {
