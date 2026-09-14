@@ -43,6 +43,16 @@ public enum TransactionType {
     ORDER_REFUND,
     /** Buy order listing fee (sink). */
     ORDER_FEE,
+    /** Transport reward into escrow / paid to the carrier / refunded. */
+    TRANSPORT_ESCROW,
+    TRANSPORT_PAYOUT,
+    TRANSPORT_REFUND,
+    /** Carrier collateral into escrow / returned / forfeited to the issuer. */
+    TRANSPORT_COLLATERAL,
+    TRANSPORT_COLLATERAL_RETURN,
+    TRANSPORT_COLLATERAL_FORFEIT,
+    /** Transport job fee (sink). */
+    TRANSPORT_FEE,
     /** Rent from tenant to landlord. */
     RENT,
     /** Loan principal paid out from lender to borrower. */

@@ -25,6 +25,7 @@ import se.nordia.swedencore.paper.command.ProductionCommands;
 import se.nordia.swedencore.paper.command.ProfileCommand;
 import se.nordia.swedencore.paper.inventory.ItemTransfer;
 import se.nordia.swedencore.paper.command.TradeCommands;
+import se.nordia.swedencore.paper.command.TransportCommands;
 import se.nordia.swedencore.paper.trade.TradeManager;
 import se.nordia.swedencore.paper.shops.ShopIndex;
 import se.nordia.swedencore.paper.shops.ShopListener;
@@ -179,6 +180,19 @@ public final class SwedenCorePlugin extends JavaPlugin {
                 }), 1200L, 1200L);
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async("expire buy orders", () -> core.orders().expireDue()),
                 1300L, 1200L);
+        getServer().getScheduler().runTaskTimer(this, () -> tasks.async(() -> core.transports().expireDue(ItemTransfer.CODEC))
+                .whenComplete((expired, error) -> {
+                    if (error != null) {
+                        getLogger().log(Level.SEVERE, "Transport expiry failed", Tasks.unwrap(error));
+                        return;
+                    }
+                    tasks.sync(() -> expired.stream().filter(t -> t.carrier() != null).forEach(t -> {
+                        Player carrier = getServer().getPlayer(t.carrier());
+                        if (carrier != null) {
+                            messages.send(carrier, "transport.failed_notice", "id", t.id());
+                        }
+                    }));
+                }), 1400L, 1200L);
         // ---- leases: collect rent every 5 minutes and tell tenants about overdue rent and evictions
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async(() -> core.leases().collectDue())
                 .whenComplete((outcomes, error) -> {
@@ -255,6 +269,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new ProductionCommands(services).register(event.registrar());
             new MarketCommand(services).register(event.registrar());
             new LoanCommands(services).register(event.registrar());
+            new TransportCommands(services).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

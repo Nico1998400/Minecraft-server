@@ -64,6 +64,7 @@ public final class NordiaCore {
     private final BankruptcyService bankruptcy;
     private final LoanService loans;
     private final CompanyFinanceService companyFinance;
+    private final se.nordia.swedencore.logistics.TransportService transports;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -95,6 +96,12 @@ public final class NordiaCore {
                 events, clock, -15);
         this.loans = new LoanService(database, economy, companies, reputation, bankruptcy, config.loans(), clock);
         this.companyFinance = new CompanyFinanceService(database, economy, companies, payroll);
+        this.transports = new se.nordia.swedencore.logistics.TransportService(database, economy, companies, stash, skills, reputation,
+                se.nordia.swedencore.logistics.TransportService.Config.defaults(), clock);
+    }
+
+    public se.nordia.swedencore.logistics.TransportService transports() {
+        return transports;
     }
 
     public CompanyFinanceService companyFinance() {
