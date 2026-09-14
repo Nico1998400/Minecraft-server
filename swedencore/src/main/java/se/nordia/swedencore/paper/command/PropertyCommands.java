@@ -110,8 +110,11 @@ public final class PropertyCommands {
         }
         Location loc = player.getLocation();
         var access = index.propertyAt(loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+        var settlement = index.settlementAt(loc.getWorld().getName(), loc.getBlockX(), loc.getBlockZ());
         if (access.isPresent()) {
             showProperty(player, access.get().property());
+        } else if (settlement.isPresent()) {
+            svc.messages().send(player, "property.here.settlement", "settlement", settlement.get().settlement().name());
         } else {
             index.cityAt(loc.getWorld().getName(), loc.getBlockX(), loc.getBlockZ()).ifPresentOrElse(
                     city -> svc.messages().send(player, "property.here.city_land", "city", city.name()),

@@ -33,6 +33,18 @@ public final class CityService {
         this.economy = economy;
     }
 
+    /** Lets other modules (settlements) veto city placement. */
+    @FunctionalInterface
+    public interface PlacementCheck {
+        void verify(Tx tx, String world, int centerX, int centerZ, int radius) throws SQLException;
+    }
+
+    private final List<PlacementCheck> placementChecks = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void addPlacementCheck(PlacementCheck check) {
+        placementChecks.add(check);
+    }
+
     public City create(String rawName, String world, int centerX, int centerZ, int radius) {
         String name = rawName == null ? "" : rawName.trim();
         if (!NAME.matcher(name).matches()) {
@@ -51,6 +63,9 @@ public final class CityService {
                 if (other.area().intersects(candidate.area())) {
                     throw DomainException.of("city.overlaps", "city", other.name());
                 }
+            }
+            for (PlacementCheck check : placementChecks) {
+                check.verify(tx, world, centerX, centerZ, radius);
             }
             long id = tx.queryLong("INSERT INTO cities (name, world, center_x, center_z, radius) VALUES (?, ?, ?, ?, ?) RETURNING id",
                     name, world, centerX, centerZ, radius);

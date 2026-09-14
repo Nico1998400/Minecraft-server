@@ -6,6 +6,7 @@ import se.nordia.swedencore.database.DatabaseConfig;
 import se.nordia.swedencore.economy.EconomyConfig;
 import se.nordia.swedencore.localization.SupportedLocale;
 import se.nordia.swedencore.properties.PropertyService;
+import se.nordia.swedencore.settlements.SettlementConfig;
 import se.nordia.swedencore.shops.ShopService;
 import se.nordia.swedencore.skills.SkillsConfig;
 
@@ -18,6 +19,7 @@ public record CoreConfig(
         ContractConfig contracts,
         PropertyService.Config properties,
         ShopService.Config shops,
+        SettlementConfig settlements,
         SupportedLocale defaultLocale,
         boolean shutdownOnDatabaseFailure
 ) {
@@ -25,6 +27,6 @@ public record CoreConfig(
     public static CoreConfig defaults(DatabaseConfig database) {
         return new CoreConfig(database, EconomyConfig.defaults(), SkillsConfig.defaults(), CompanyConfig.defaults(),
                 ContractConfig.defaults(), PropertyService.Config.defaults(), ShopService.Config.defaults(),
-                SupportedLocale.SV_SE, true);
+                SettlementConfig.defaults(), SupportedLocale.SV_SE, true);
     }
 }

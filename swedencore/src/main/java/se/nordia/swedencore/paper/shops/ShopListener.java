@@ -108,7 +108,7 @@ public final class ShopListener implements Listener {
             return;
         }
         long sourceArea = protection.areaKey(from.getWorld().getName(), from.getBlockX(), from.getBlockY(), from.getBlockZ());
-        if (sourceArea <= 0) {
+        if (sourceArea == 0 || ProtectionIndex.isCityKey(sourceArea)) {
             return;
         }
         long targetArea = to.getWorld() == null ? 0

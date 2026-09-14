@@ -66,6 +66,19 @@ properties:
   # City land outside properties is public space: nobody builds there (admins with nordia.admin.property.bypass can).
   protect-city-land: true
 
+settlements:
+  # Extra space kept between a settlement's largest possible area and cities or other settlements.
+  spacing-buffer: 64
+  max-invites: 20
+  # Requirements to REACH each tier. OUTPOST = founding (cost paid by the founder).
+  # Upgrade costs are paid from the settlement treasury and destroyed (public works).
+  tiers:
+    OUTPOST:    { radius: 32,  min-members: 1,  min-treasury: "0",       min-age-days: 0,  min-leader-reputation: 0,  cost: "10000" }
+    SETTLEMENT: { radius: 64,  min-members: 3,  min-treasury: "25000",   min-age-days: 3,  min-leader-reputation: 0,  cost: "10000" }
+    VILLAGE:    { radius: 128, min-members: 8,  min-treasury: "100000",  min-age-days: 14, min-leader-reputation: 10, cost: "50000" }
+    TOWN:       { radius: 192, min-members: 15, min-treasury: "500000",  min-age-days: 30, min-leader-reputation: 25, cost: "200000" }
+    CITY:       { radius: 256, min-members: 30, min-treasury: "2000000", min-age-days: 60, min-leader-reputation: 50, cost: "1000000" }
+
 shops:
   max-listings-per-shop: 54
   max-bundles-per-purchase: 16

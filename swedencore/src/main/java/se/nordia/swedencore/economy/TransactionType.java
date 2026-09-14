@@ -35,6 +35,10 @@ public enum TransactionType {
     SHOP_PURCHASE,
     /** Settlement founding / upgrade costs. */
     SETTLEMENT_FEE,
+    /** A resident contributes to the settlement treasury. */
+    SETTLEMENT_DEPOSIT,
+    /** The leader takes money from the settlement treasury. */
+    SETTLEMENT_WITHDRAWAL,
     /** Moving a dissolved entity's remaining funds to its owner. */
     DISSOLUTION_PAYOUT
 }

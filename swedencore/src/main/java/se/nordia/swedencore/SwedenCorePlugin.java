@@ -16,6 +16,7 @@ import se.nordia.swedencore.paper.command.CommandServices;
 import se.nordia.swedencore.paper.command.CompanyCommands;
 import se.nordia.swedencore.paper.command.ContractCommands;
 import se.nordia.swedencore.paper.command.PropertyCommands;
+import se.nordia.swedencore.paper.command.SettlementCommands;
 import se.nordia.swedencore.paper.command.ShopCommands;
 import se.nordia.swedencore.paper.shops.ShopIndex;
 import se.nordia.swedencore.paper.shops.ShopListener;
@@ -167,6 +168,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new StashCommands(services).register(event.registrar());
             new PropertyCommands(services, protection).register(event.registrar());
             new ShopCommands(services, shopIndex, protection).register(event.registrar());
+            new SettlementCommands(services).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

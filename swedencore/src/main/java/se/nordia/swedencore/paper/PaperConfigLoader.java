@@ -11,6 +11,8 @@ import se.nordia.swedencore.economy.EconomyConfig;
 import se.nordia.swedencore.economy.Money;
 import se.nordia.swedencore.localization.SupportedLocale;
 import se.nordia.swedencore.properties.PropertyService;
+import se.nordia.swedencore.settlements.Settlement;
+import se.nordia.swedencore.settlements.SettlementConfig;
 import se.nordia.swedencore.shops.ShopService;
 import se.nordia.swedencore.skills.LevelCurve;
 import se.nordia.swedencore.skills.Skill;
@@ -64,7 +66,24 @@ public final class PaperConfigLoader {
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
                 contracts(section(file, "contracts")), properties(section(file, "properties")), shops(section(file, "shops")),
-                defaultLocale, db.getBoolean("shutdown-server-on-failure", true));
+                settlements(section(file, "settlements")), defaultLocale, db.getBoolean("shutdown-server-on-failure", true));
+    }
+
+    static SettlementConfig settlements(ConfigurationSection s) {
+        SettlementConfig d = SettlementConfig.defaults();
+        Map<Settlement.Tier, SettlementConfig.Requirements> tiers = new EnumMap<>(Settlement.Tier.class);
+        for (Settlement.Tier tier : Settlement.Tier.values()) {
+            SettlementConfig.Requirements def = d.requirements(tier);
+            String p = "tiers." + tier.name() + ".";
+            tiers.put(tier, new SettlementConfig.Requirements(
+                    s.getInt(p + "radius", def.radius()),
+                    s.getInt(p + "min-members", def.minMembers()),
+                    money(s.getString(p + "min-treasury", Long.toString(def.minTreasury().ore() / Money.ORE_PER_SEK)), true),
+                    s.getInt(p + "min-age-days", def.minAgeDays()),
+                    s.getInt(p + "min-leader-reputation", def.minLeaderReputation()),
+                    money(s.getString(p + "cost", Long.toString(def.cost().ore() / Money.ORE_PER_SEK)), true)));
+        }
+        return new SettlementConfig(tiers, s.getInt("spacing-buffer", d.spacingBuffer()), s.getInt("max-invites", d.maxInvites()));
     }
 
     static ShopService.Config shops(ConfigurationSection s) {

@@ -165,7 +165,8 @@ public final class ProtectionListener implements Listener {
     /** Liquids may not flow into a different protection area. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onFlow(BlockFromToEvent event) {
-        if (areaKey(event.getBlock()) != areaKey(event.getToBlock()) && areaKey(event.getToBlock()) > 0) {
+        long target = areaKey(event.getToBlock());
+        if (target != 0 && !ProtectionIndex.isCityKey(target) && areaKey(event.getBlock()) != target) {
             event.setCancelled(true);
         }
     }
@@ -195,10 +196,13 @@ public final class ProtectionListener implements Listener {
         return false;
     }
 
-    /** True for blocks inside any property, or city land when it is protected (environmental damage protection). */
+    /** True inside properties and settlements, and on city land when it is protected (environmental damage). */
     private boolean isProtected(Block block) {
         long key = areaKey(block);
-        return key > 0 || (key < 0 && protectCityLand);
+        if (key == 0) {
+            return false;
+        }
+        return !ProtectionIndex.isCityKey(key) || protectCityLand;
     }
 
     private long areaKey(Block block) {
