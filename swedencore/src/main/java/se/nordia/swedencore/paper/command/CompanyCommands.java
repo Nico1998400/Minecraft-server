@@ -81,6 +81,7 @@ public final class CompanyCommands {
                         .then(Commands.literal("confirm").executes(c -> dissolve(c, null, true)))
                         .then(Commands.argument("company", StringArgumentType.greedyString())
                                 .executes(c -> dissolve(c, StringArgumentType.getString(c, "company"), false))))
+                .then(withCompany(Commands.literal("finance"), this::finance))
                 .then(Commands.literal("bankrupt")
                         .executes(c -> bankrupt(c, false))
                         .then(Commands.literal("confirm").executes(c -> bankrupt(c, true))))
@@ -404,6 +405,29 @@ public final class CompanyCommands {
         svc.tasks().run(player, () -> resolve(uuid, ref, CompanyRole.OWNER), company -> {
             session.pendingConfirmation(new PlayerSession.PendingConfirmation("dissolve", company.id(), now + CONFIRM_WINDOW_MILLIS));
             svc.messages().send(player, "company.dissolve.confirm", "name", company.name());
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /** Income statement (30 days) and balance sheet for owners and managers. */
+    private int finance(CommandContext<CommandSourceStack> c, String ref) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        svc.tasks().run(player, () -> svc.core().companyFinance().report(uuid, resolve(uuid, ref, CompanyRole.OWNER, CompanyRole.MANAGER).id(), 30), r -> {
+            var i = r.income();
+            var b = r.balance();
+            svc.messages().send(player, "company.finance.header", "name", r.company().name(), "days", i.days());
+            svc.messages().send(player, "company.finance.income", "revenue", i.revenue(), "wages", i.wages(),
+                    "purchasing", i.purchasing(), "fees", i.fees(), "other", i.otherCosts());
+            svc.messages().send(player, i.operatingResult().isNegative() ? "company.finance.result_loss" : "company.finance.result_profit",
+                    "result", i.operatingResult().isNegative() ? i.operatingResult().negate() : i.operatingResult(),
+                    "in", i.financingIn(), "out", i.financingOut());
+            svc.messages().send(player, "company.finance.balance", "cash", b.cash(), "properties", b.properties(),
+                    "receivables", b.receivables(), "debt", b.debt(), "arrears", b.wageArrears());
+            svc.messages().send(player, "company.finance.equity", "equity", b.equity(), "employees", b.employees());
         });
         return Command.SINGLE_SUCCESS;
     }

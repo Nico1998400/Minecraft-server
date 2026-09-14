@@ -1,6 +1,7 @@
 package se.nordia.swedencore.core;
 
 import se.nordia.swedencore.cities.CityService;
+import se.nordia.swedencore.companies.CompanyFinanceService;
 import se.nordia.swedencore.companies.CompanyService;
 import se.nordia.swedencore.events.DomainEvents;
 import se.nordia.swedencore.finance.BankruptcyService;
@@ -60,6 +61,7 @@ public final class NordiaCore {
     private final MarketService market;
     private final BankruptcyService bankruptcy;
     private final LoanService loans;
+    private final CompanyFinanceService companyFinance;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -89,6 +91,11 @@ public final class NordiaCore {
         this.bankruptcy = new BankruptcyService(database, economy, companies, payroll, contracts, orders, properties, reputation,
                 events, clock, -15);
         this.loans = new LoanService(database, economy, companies, reputation, bankruptcy, config.loans(), clock);
+        this.companyFinance = new CompanyFinanceService(database, economy, companies, payroll);
+    }
+
+    public CompanyFinanceService companyFinance() {
+        return companyFinance;
     }
 
     public BankruptcyService bankruptcy() {
