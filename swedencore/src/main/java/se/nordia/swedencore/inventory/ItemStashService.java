@@ -39,8 +39,12 @@ public final class ItemStashService {
         }
     }
 
-    /** An item stack to store. */
-    public record StashItem(String material, int amount, byte[] data) {
+    /**
+     * An item stack to store.
+     *
+     * @param pristine true if the stack is a plain item of its material (can be consumed by production)
+     */
+    public record StashItem(String material, int amount, byte[] data, boolean pristine) {
         public StashItem {
             Objects.requireNonNull(data);
             if (material == null || !MATERIAL.matcher(material).matches() || amount < 1 || amount > MAX_STACK
@@ -48,6 +52,72 @@ public final class ItemStashService {
                 throw new IllegalArgumentException("Invalid stash item");
             }
         }
+
+        public StashItem(String material, int amount, byte[] data) {
+            this(material, amount, data, false);
+        }
+    }
+
+    /**
+     * Platform bridge for creating plain item stacks. Implemented by the Paper layer; the domain stays independent of
+     * the item format.
+     */
+    public interface ItemCodec {
+        byte[] pristine(String material, int amount);
+
+        int maxStackSize(String material);
+
+        boolean isKnownMaterial(String material);
+    }
+
+    /**
+     * Removes {@code amounts} of pristine items from an owner's unclaimed stash inside the caller's transaction.
+     * Partially used stacks are re-created with the codec. Throws {@code production.missing_input} if anything is short.
+     */
+    public void consumePristine(Tx tx, Owner owner, java.util.Map<String, Integer> amounts, ItemCodec codec, UUID actor) throws SQLException {
+        for (var entry : new java.util.TreeMap<>(amounts).entrySet()) {
+            String material = entry.getKey();
+            int needed = entry.getValue();
+            record Row(long id, int amount) {
+            }
+            List<Row> rows = tx.queryList("""
+                            SELECT id, amount FROM item_stash
+                            WHERE owner_type = ? AND owner_id = ? AND material = ? AND claimed_at IS NULL AND pristine
+                            ORDER BY id FOR UPDATE""",
+                    rs -> new Row(rs.getLong("id"), rs.getInt("amount")), owner.type(), owner.id(), material);
+            long available = rows.stream().mapToLong(Row::amount).sum();
+            if (available < needed) {
+                throw DomainException.of("production.missing_input", "material", material, "needed", needed, "available", available);
+            }
+            int remaining = needed;
+            for (Row row : rows) {
+                if (remaining == 0) {
+                    break;
+                }
+                if (row.amount() <= remaining) {
+                    tx.update("UPDATE item_stash SET claimed_at = now(), claimed_by = ?, source_type = 'CONSUMED' WHERE id = ?", actor, row.id());
+                    remaining -= row.amount();
+                } else {
+                    int left = row.amount() - remaining;
+                    tx.update("UPDATE item_stash SET amount = ?, item = ? WHERE id = ?", left, codec.pristine(material, left), row.id());
+                    remaining = 0;
+                }
+            }
+        }
+    }
+
+    /** Deposits plain items, split into stacks of the material's maximum stack size. */
+    public void depositPristine(Tx tx, Owner owner, String material, int amount, ItemCodec codec, String sourceType, String sourceId)
+            throws SQLException {
+        int maxStack = Math.clamp(codec.maxStackSize(material), 1, MAX_STACK);
+        List<StashItem> stacks = new java.util.ArrayList<>();
+        int left = amount;
+        while (left > 0) {
+            int size = Math.min(maxStack, left);
+            stacks.add(new StashItem(material, size, codec.pristine(material, size), true));
+            left -= size;
+        }
+        deposit(tx, owner, stacks, sourceType, sourceId);
     }
 
     public record StashEntry(long id, String material, int amount, byte[] data, String sourceType, String sourceId, Instant createdAt) {
@@ -64,9 +134,9 @@ public final class ItemStashService {
     public void deposit(Tx tx, Owner owner, List<StashItem> items, String sourceType, String sourceId) throws SQLException {
         for (StashItem item : items) {
             tx.update("""
-                            INSERT INTO item_stash (owner_type, owner_id, item, material, amount, source_type, source_id)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                    owner.type(), owner.id(), item.data(), item.material(), item.amount(), sourceType, sourceId);
+                            INSERT INTO item_stash (owner_type, owner_id, item, material, amount, source_type, source_id, pristine)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    owner.type(), owner.id(), item.data(), item.material(), item.amount(), sourceType, sourceId, item.pristine());
         }
     }
 

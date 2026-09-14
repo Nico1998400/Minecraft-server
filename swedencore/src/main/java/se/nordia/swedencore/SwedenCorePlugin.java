@@ -19,7 +19,9 @@ import se.nordia.swedencore.paper.command.PropertyCommands;
 import se.nordia.swedencore.paper.command.SettlementCommands;
 import se.nordia.swedencore.paper.command.ShopCommands;
 import se.nordia.swedencore.paper.command.OrderCommands;
+import se.nordia.swedencore.paper.command.ProductionCommands;
 import se.nordia.swedencore.paper.command.ProfileCommand;
+import se.nordia.swedencore.paper.inventory.ItemTransfer;
 import se.nordia.swedencore.paper.command.TradeCommands;
 import se.nordia.swedencore.paper.trade.TradeManager;
 import se.nordia.swedencore.paper.shops.ShopIndex;
@@ -69,7 +71,9 @@ public final class SwedenCorePlugin extends JavaPlugin {
         saveDefaultConfig();
         CoreConfig config;
         try {
-            config = PaperConfigLoader.load(getConfig(), getLogger());
+            saveResourceIfMissing("production.yml");
+            config = PaperConfigLoader.load(getConfig(),
+                    YamlConfiguration.loadConfiguration(new File(getDataFolder(), "production.yml")), getLogger());
         } catch (RuntimeException e) {
             getLogger().log(Level.SEVERE, "Invalid configuration; SwedenCore cannot start", e);
             getServer().shutdown();
@@ -173,6 +177,19 @@ public final class SwedenCorePlugin extends JavaPlugin {
                 }), 1200L, 1200L);
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async("expire buy orders", () -> core.orders().expireDue()),
                 1300L, 1200L);
+        getServer().getScheduler().runTaskTimer(this, () -> tasks.async(() -> core.production().completeDue(ItemTransfer.CODEC))
+                .whenComplete((runs, error) -> {
+                    if (error != null) {
+                        getLogger().log(Level.SEVERE, "Production completion failed", Tasks.unwrap(error));
+                        return;
+                    }
+                    tasks.sync(() -> runs.forEach(run -> {
+                        Player operator = getServer().getPlayer(run.operator());
+                        if (operator != null) {
+                            messages.send(operator, "production.completed_notice", "recipe", run.recipe(), "batches", run.batches());
+                        }
+                    }));
+                }), 400L, 400L);
 
         CommandServices services = new CommandServices(core, messages, tasks, sessions, getPluginMeta().getVersion());
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
@@ -189,6 +206,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new TradeCommands(services, tradeManager).register(event.registrar());
             new OrderCommands(services).register(event.registrar());
             new ProfileCommand(services).register(event.registrar());
+            new ProductionCommands(services).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

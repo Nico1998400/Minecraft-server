@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────
+#  SwedenCore — production recipes
+#  Companies run recipes at FACTORY properties. Inputs are taken from the company inventory (/stash company),
+#  outputs are delivered there after seconds × batches. The operator (owner, manager or ENGINEER employee) needs the
+#  Engineering level and earns xp-per-batch Engineering XP.
+# ─────────────────────────────────────────────────────────────
+
+# Concurrent runs allowed per owned factory property.
+runs-per-factory: 2
+max-batches: 16
+
+recipes:
+  iron_smelting:
+    inputs: { RAW_IRON: 8, COAL: 1 }
+    outputs: { IRON_INGOT: 8 }
+    seconds: 60
+    engineering-level: 1
+    xp-per-batch: 20
+  copper_smelting:
+    inputs: { RAW_COPPER: 8, COAL: 1 }
+    outputs: { COPPER_INGOT: 8 }
+    seconds: 60
+    engineering-level: 1
+    xp-per-batch: 15
+  gold_smelting:
+    inputs: { RAW_GOLD: 8, COAL: 1 }
+    outputs: { GOLD_INGOT: 8 }
+    seconds: 90
+    engineering-level: 10
+    xp-per-batch: 30
+  glassworks:
+    inputs: { SAND: 8, COAL: 1 }
+    outputs: { GLASS: 8 }
+    seconds: 60
+    engineering-level: 1
+    xp-per-batch: 15
+  stoneworks:
+    inputs: { COBBLESTONE: 8, COAL: 1 }
+    outputs: { STONE: 8 }
+    seconds: 45
+    engineering-level: 1
+    xp-per-batch: 10
+  sawmill:
+    inputs: { OAK_LOG: 4 }
+    outputs: { OAK_PLANKS: 18 }
+    seconds: 30
+    engineering-level: 1
+    xp-per-batch: 10
+  bakery:
+    inputs: { WHEAT: 9 }
+    outputs: { BREAD: 4 }
+    seconds: 60
+    engineering-level: 5
+    xp-per-batch: 15
+  toolworks:
+    inputs: { IRON_INGOT: 3, STICK: 2 }
+    outputs: { IRON_PICKAXE: 1 }
+    seconds: 120
+    engineering-level: 20
+    xp-per-batch: 60

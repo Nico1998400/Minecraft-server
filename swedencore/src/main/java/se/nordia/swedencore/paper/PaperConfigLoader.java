@@ -11,6 +11,7 @@ import se.nordia.swedencore.economy.EconomyConfig;
 import se.nordia.swedencore.economy.Money;
 import se.nordia.swedencore.localization.SupportedLocale;
 import se.nordia.swedencore.orders.BuyOrderService;
+import se.nordia.swedencore.production.ProductionService;
 import se.nordia.swedencore.properties.PropertyService;
 import se.nordia.swedencore.settlements.Settlement;
 import se.nordia.swedencore.settlements.SettlementConfig;
@@ -37,11 +38,50 @@ public final class PaperConfigLoader {
     private PaperConfigLoader() {
     }
 
-    public static CoreConfig load(FileConfiguration file, Logger logger) {
-        return load(file, System.getenv()::get, logger);
+    public static CoreConfig load(FileConfiguration file, FileConfiguration productionFile, Logger logger) {
+        return load(file, productionFile, System.getenv()::get, logger);
     }
 
-    static CoreConfig load(FileConfiguration file, Function<String, String> env, Logger logger) {
+    static ProductionService.Config production(FileConfiguration file, Logger logger) {
+        ProductionService.Config defaults = ProductionService.Config.defaults();
+        ConfigurationSection recipesSection = file.getConfigurationSection("recipes");
+        Map<String, ProductionService.Recipe> recipes = new java.util.HashMap<>();
+        if (recipesSection == null) {
+            recipes.putAll(defaults.recipes());
+        } else {
+            for (String id : recipesSection.getKeys(false)) {
+                ConfigurationSection r = recipesSection.getConfigurationSection(id);
+                if (r == null) {
+                    continue;
+                }
+                try {
+                    recipes.put(id.toLowerCase(java.util.Locale.ROOT), new ProductionService.Recipe(id.toLowerCase(java.util.Locale.ROOT),
+                            materials(r.getConfigurationSection("inputs")), materials(r.getConfigurationSection("outputs")),
+                            r.getInt("seconds", 60), r.getInt("engineering-level", 1), r.getLong("xp-per-batch", 10)));
+                } catch (IllegalArgumentException e) {
+                    logger.warning("production.yml: invalid recipe " + id + ": " + e.getMessage());
+                }
+            }
+        }
+        return new ProductionService.Config(recipes, file.getInt("runs-per-factory", defaults.runsPerFactory()),
+                file.getInt("max-batches", defaults.maxBatches()));
+    }
+
+    private static Map<String, Integer> materials(ConfigurationSection section) {
+        Map<String, Integer> result = new java.util.HashMap<>();
+        if (section != null) {
+            for (String key : section.getKeys(false)) {
+                org.bukkit.Material material = org.bukkit.Material.matchMaterial(key.toUpperCase(java.util.Locale.ROOT));
+                if (material == null || !material.isItem()) {
+                    throw new IllegalArgumentException("unknown material " + key);
+                }
+                result.put(material.name(), Math.max(1, section.getInt(key)));
+            }
+        }
+        return result;
+    }
+
+    static CoreConfig load(FileConfiguration file, FileConfiguration productionFile, Function<String, String> env, Logger logger) {
         ConfigurationSection db = section(file, "database");
         DatabaseConfig database = new DatabaseConfig(
                 envOr(env, "NORDIA_DB_HOST", db.getString("host", "localhost")),
@@ -67,7 +107,7 @@ public final class PaperConfigLoader {
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
                 contracts(section(file, "contracts")), properties(section(file, "properties")), shops(section(file, "shops")),
-                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), defaultLocale,
+                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), production(productionFile, logger), defaultLocale,
                 db.getBoolean("shutdown-server-on-failure", true));
     }
 

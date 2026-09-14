@@ -87,8 +87,28 @@ public final class ItemTransfer {
     }
 
     public static ItemStashService.StashItem toStash(ItemStack stack) {
-        return new ItemStashService.StashItem(stack.getType().name(), stack.getAmount(), stack.serializeAsBytes());
+        boolean pristine = stack.isSimilar(ItemStack.of(stack.getType()));
+        return new ItemStashService.StashItem(stack.getType().name(), stack.getAmount(), stack.serializeAsBytes(), pristine);
     }
+
+    /** Paper implementation of the domain's item codec. */
+    public static final ItemStashService.ItemCodec CODEC = new ItemStashService.ItemCodec() {
+        @Override
+        public byte[] pristine(String material, int amount) {
+            return ItemStack.of(Material.valueOf(material), amount).serializeAsBytes();
+        }
+
+        @Override
+        public int maxStackSize(String material) {
+            return Material.valueOf(material).getMaxStackSize();
+        }
+
+        @Override
+        public boolean isKnownMaterial(String material) {
+            Material m = Material.matchMaterial(material);
+            return m != null && m.isItem() && !m.isAir();
+        }
+    };
 
     public static List<ItemStashService.StashItem> toStash(List<ItemStack> stacks) {
         return stacks.stream().map(ItemTransfer::toStash).toList();

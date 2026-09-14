@@ -37,19 +37,19 @@ Remaining P2 work is polish (GUIs, basic production). Next major phase: **P3 —
 - [x] Buy orders (V9): escrowed multi-seller demand, `/orders`, `/order`
 - [x] Company inventory (`/stash give company`) and work sites (employee drops → company stash)
 - [x] `/profile [player]` — identity and story
+- [x] Basic production (V10): recipes in `production.yml`, FACTORY capacity, engineer operators, Engineering XP,
+      pristine stash consumption via `ItemCodec`, `/production`
 - [x] Domain event bus; ledger shows player and company counterparties
 - [x] 157 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-2. **Basic production (P2 #32)**: company recipes that convert stash inputs into outputs over time at FACTORY
-   properties (e.g. iron ore → iron ingots), requiring an on-duty ENGINEER; output to company stash.
-3. **P3 — dynamic market statistics**: price index per material from `shop_sales`, `buy_order_fills`, contract
+2. **P3 — dynamic market statistics**: price index per material from `shop_sales`, `buy_order_fills`, contract
    deliveries; `/market <item>` showing recent average prices and volume (no trading from the command).
-4. **P3 — banking & loans**: company loans from a bank entity with interest and repayment schedule; bankruptcy
+3. **P3 — banking & loans**: company loans from a bank entity with interest and repayment schedule; bankruptcy
    procedure using `companies.status = BANKRUPT` and wage arrears.
-5. **Rent/lease for properties** (landlord income): monthly rent paid from tenant to owner with eviction on default.
-6. GUI menus for common flows (job board, company management) — optional polish.
+4. **Rent/lease for properties** (landlord income): monthly rent paid from tenant to owner with eviction on default.
+5. GUI menus for common flows (job board, company management) — optional polish.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.

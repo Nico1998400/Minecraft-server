@@ -151,6 +151,21 @@ removed before money moves and only returned on definite failure — a crash can
 
 Future: supplier agreements (recurring contracts), physical marketplaces (city-owned market stalls), price statistics.
 
+## 10b. Production (supply chains)
+
+Companies that own a **FACTORY** property run recipes from `production.yml` (smelting, glassworks, sawmill, bakery,
+toolworks …). Inputs come from the company inventory — typically filled by work sites, buy orders or contract
+deliveries — and outputs return there after `seconds × batches`, ready for shops, contracts or trades.
+
+- Operator: owner, manager or an employee in an **ENGINEER** position with the recipe's Engineering level. The operator
+  earns Engineering XP — the skill's primary source.
+- Capacity: `runs-per-factory` concurrent runs per owned factory. More factories ⇒ more output: property investment
+  is how companies scale production.
+- Only pristine stacks are consumed; inputs are taken atomically when the run starts.
+
+This completes the first full chain: miners (work site) → raw ore in company inventory → factory run by an engineer →
+ingots → toolworks → tools in a shop chest → bought by players.
+
 ## 11. NPC money (future)
 
 If NPC vendors are added they must be: price-capped, volume-limited per period, funded from a city/system budget recorded
