@@ -24,6 +24,7 @@ PostgreSQL 18 (dev via docker compose, tests via embedded PostgreSQL). Access th
 | V10 | `item_stash.pristine`, `production_runs` |
 | V11 | `loans`, `loan_payments`, `bankruptcies`; `BANKRUPTCY` employee end reason |
 | V12 | `property_leases` (one open lease per property), `lease_payments` |
+| V13 | `transports` (pickup/delivery tokens); `TRANSPORT` account owner type (purposes `ESCROW`, `COLLATERAL`) |
 
 ## Global conventions
 

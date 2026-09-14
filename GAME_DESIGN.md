@@ -178,6 +178,16 @@ deliveries — and outputs return there after `seconds × batches`, ready for sh
 This completes the first full chain: miners (work site) → raw ore in company inventory → factory run by an engineer →
 ingots → toolworks → tools in a shop chest → bought by players.
 
+## 10d. Logistics
+
+Transport jobs move goods physically. The issuer (player, or company owner/manager) creates a job where they stand
+(pickup), naming cargo from their inventory (reserved immediately), a destination ≥ 100 blocks away, a reward (escrowed,
+2% fee) and a collateral. A carrier accepts **at the pickup point** by posting the collateral and receives the real
+items — they must travel with them (and can lose them). Delivering the full cargo **at the destination** stores the
+goods for the issuer, pays the reward, returns the collateral and grants Logistics XP (≈ distance/10 × cargo size, capped).
+If the deadline passes in transit, the issuer gets the reward back plus the collateral as compensation and the carrier
+loses reputation. Collateral is what makes cargo theft unprofitable; later crime (P5) can build on this.
+
 ## 10c. Market statistics
 
 `/market <item>` shows the volume-weighted average price per item over the last 7 days from shop sales and buy-order

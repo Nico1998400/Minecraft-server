@@ -3,7 +3,8 @@
 _Last updated: 2026-09-14_
 
 ## Current phase
-**P0, P1, P2 complete (MVP). P3 in progress:** market statistics, loans, bankruptcy, company finance and renting done.
+**P0, P1, P2 complete (MVP). P3 in progress:** market statistics, loans, bankruptcy, company finance, renting and
+logistics done; warehouses next.
 
 ## Environment verified
 - Paper 26.2 build 123 (STABLE) — requires Java 25
@@ -47,14 +48,15 @@ _Last updated: 2026-09-14_
 - [x] Company finance report: `/company finance` (income statement, balance sheet, equity)
 - [x] Property renting (V12): listings, tenancy with exclusive use, rent collection, eviction; occupant concept used by
       protection, shops, production and work sites; `/property rentals|rent-out|rent|move-out|end-lease`
-- [x] 172 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+- [x] Logistics (V13): transport jobs with physical pickup/delivery, collateral, Logistics XP; `/transports`, `/transport`
+- [x] 176 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-2. Load `LeaseService.Config` from config.yml (currently defaults in `NordiaCore`: 24–720 h periods, 24 h grace, −5 rep).
-3. **Logistics (P3 #38)**: transport contracts that require carrying goods physically between two locations
-   (pickup chest → delivery chest), Logistics XP for carriers.
-4. **Warehouses (P3 #39)**: WAREHOUSE properties raise a company's stash capacity; introduce stash capacity limits.
+2. **Warehouses (P3 #39)**: WAREHOUSE properties raise a company's stash capacity; introduce stash capacity limits.
+3. **Vehicles (P3 #40)** — optional; could reuse minecart/boat entities with cargo capacity for transports.
+4. **P4 — company valuation & shares** (only once P3 is stable): valuation from `CompanyFinanceService` (equity,
+   30-day operating result, reputation), share registry, dividends.
 5. GUI menus for common flows (job board, company management) — optional polish.
 
 ## Known issues / notes
@@ -64,5 +66,7 @@ _Last updated: 2026-09-14_
 - Trade window money buttons adjust in 100 / 1 000 / 10 000 SEK steps (chat cannot be opened in a container GUI).
 - Buy orders can be filled from anywhere (goods delivered to the issuer's stash). Logistics (P3) may later require
   physical transport.
+- Bankruptcy does not cancel the company's OPEN transport jobs; they expire later and refund into the (empty) bankrupt
+  company account. Carriers IN_TRANSIT can still deliver and get paid from escrow.
 - Dev harness (not committed) drives the server console via redirected stdin; the first command is eaten by a BOM.
 - Windows PowerShell 5.1: commit messages containing double quotes break `git commit -m`; use `git commit -F file`.
