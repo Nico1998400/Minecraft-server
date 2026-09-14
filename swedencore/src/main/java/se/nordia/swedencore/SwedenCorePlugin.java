@@ -18,6 +18,7 @@ import se.nordia.swedencore.paper.command.ContractCommands;
 import se.nordia.swedencore.paper.command.PropertyCommands;
 import se.nordia.swedencore.paper.command.SettlementCommands;
 import se.nordia.swedencore.paper.command.ShopCommands;
+import se.nordia.swedencore.paper.command.OrderCommands;
 import se.nordia.swedencore.paper.command.TradeCommands;
 import se.nordia.swedencore.paper.trade.TradeManager;
 import se.nordia.swedencore.paper.shops.ShopIndex;
@@ -164,6 +165,8 @@ public final class SwedenCorePlugin extends JavaPlugin {
                         }
                     }));
                 }), 1200L, 1200L);
+        getServer().getScheduler().runTaskTimer(this, () -> tasks.async("expire buy orders", () -> core.orders().expireDue()),
+                1300L, 1200L);
 
         CommandServices services = new CommandServices(core, messages, tasks, sessions, getPluginMeta().getVersion());
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
@@ -178,6 +181,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new ShopCommands(services, shopIndex, protection).register(event.registrar());
             new SettlementCommands(services).register(event.registrar());
             new TradeCommands(services, tradeManager).register(event.registrar());
+            new OrderCommands(services).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

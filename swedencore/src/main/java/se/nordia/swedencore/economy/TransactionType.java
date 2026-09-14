@@ -35,6 +35,14 @@ public enum TransactionType {
     SHOP_PURCHASE,
     /** Money offered in a direct player-to-player trade. */
     TRADE,
+    /** Buy order budget moved into escrow. */
+    ORDER_ESCROW,
+    /** Seller paid from a buy order's escrow. */
+    ORDER_PAYOUT,
+    /** Unused buy order escrow returned to the issuer. */
+    ORDER_REFUND,
+    /** Buy order listing fee (sink). */
+    ORDER_FEE,
     /** Settlement founding / upgrade costs. */
     SETTLEMENT_FEE,
     /** A resident contributes to the settlement treasury. */

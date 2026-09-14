@@ -7,7 +7,7 @@ import java.util.UUID;
 public record AccountOwner(OwnerType type, String id) {
 
     public enum OwnerType {
-        SYSTEM, PLAYER, COMPANY, CITY, SETTLEMENT, CONTRACT
+        SYSTEM, PLAYER, COMPANY, CITY, SETTLEMENT, CONTRACT, ORDER
     }
 
     public static final AccountOwner MINT = new AccountOwner(OwnerType.SYSTEM, "MINT");
@@ -39,5 +39,9 @@ public record AccountOwner(OwnerType type, String id) {
 
     public static AccountOwner contract(long contractId) {
         return new AccountOwner(OwnerType.CONTRACT, Long.toString(contractId));
+    }
+
+    public static AccountOwner buyOrder(long orderId) {
+        return new AccountOwner(OwnerType.ORDER, Long.toString(orderId));
     }
 }

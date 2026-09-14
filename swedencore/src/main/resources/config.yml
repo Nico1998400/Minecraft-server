@@ -79,6 +79,12 @@ settlements:
     TOWN:       { radius: 192, min-members: 15, min-treasury: "500000",  min-age-days: 30, min-leader-reputation: 25, cost: "200000" }
     CITY:       { radius: 256, min-members: 30, min-treasury: "2000000", min-age-days: 60, min-leader-reputation: 50, cost: "1000000" }
 
+buy-orders:
+  # Listing fee as % of the escrowed budget (money sink).
+  fee-percent: 1
+  max-active-per-issuer: 10
+  max-duration-hours: 336
+
 shops:
   max-listings-per-shop: 54
   max-bundles-per-purchase: 16

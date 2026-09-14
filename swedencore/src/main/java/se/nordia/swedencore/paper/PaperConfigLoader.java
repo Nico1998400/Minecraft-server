@@ -10,6 +10,7 @@ import se.nordia.swedencore.database.DatabaseConfig;
 import se.nordia.swedencore.economy.EconomyConfig;
 import se.nordia.swedencore.economy.Money;
 import se.nordia.swedencore.localization.SupportedLocale;
+import se.nordia.swedencore.orders.BuyOrderService;
 import se.nordia.swedencore.properties.PropertyService;
 import se.nordia.swedencore.settlements.Settlement;
 import se.nordia.swedencore.settlements.SettlementConfig;
@@ -66,7 +67,14 @@ public final class PaperConfigLoader {
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
                 contracts(section(file, "contracts")), properties(section(file, "properties")), shops(section(file, "shops")),
-                settlements(section(file, "settlements")), defaultLocale, db.getBoolean("shutdown-server-on-failure", true));
+                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), defaultLocale,
+                db.getBoolean("shutdown-server-on-failure", true));
+    }
+
+    static BuyOrderService.Config orders(ConfigurationSection s) {
+        BuyOrderService.Config d = BuyOrderService.Config.defaults();
+        return new BuyOrderService.Config(s.getInt("fee-percent", d.feePercent()),
+                s.getInt("max-active-per-issuer", d.maxActivePerIssuer()), s.getInt("max-duration-hours", d.maxDurationHours()));
     }
 
     static SettlementConfig settlements(ConfigurationSection s) {

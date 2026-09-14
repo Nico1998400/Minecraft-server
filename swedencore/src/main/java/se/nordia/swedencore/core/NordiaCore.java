@@ -6,6 +6,7 @@ import se.nordia.swedencore.events.DomainEvents;
 import se.nordia.swedencore.properties.PropertyService;
 import se.nordia.swedencore.settlements.SettlementService;
 import se.nordia.swedencore.shops.ShopService;
+import se.nordia.swedencore.orders.BuyOrderService;
 import se.nordia.swedencore.trade.TradeService;
 import se.nordia.swedencore.contracts.ContractService;
 import se.nordia.swedencore.inventory.ItemStashService;
@@ -48,6 +49,7 @@ public final class NordiaCore {
     private final ShopService shops;
     private final SettlementService settlements;
     private final TradeService trades;
+    private final BuyOrderService orders;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -70,6 +72,11 @@ public final class NordiaCore {
         this.shops = new ShopService(database, economy, properties, events, config.shops());
         this.settlements = new SettlementService(database, economy, cities, events, config.settlements(), clock);
         this.trades = new TradeService(database, economy);
+        this.orders = new BuyOrderService(database, economy, companies, stash, config.orders(), clock);
+    }
+
+    public BuyOrderService orders() {
+        return orders;
     }
 
     public TradeService trades() {
