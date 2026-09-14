@@ -85,6 +85,23 @@ buy-orders:
   max-active-per-issuer: 10
   max-duration-hours: 336
 
+loans:
+  # Player/company lending. The system collects installments automatically; no money is created.
+  max-installments: 52
+  min-interval-hours: 24
+  max-interval-hours: 720
+  max-interest-percent: 100
+  offer-ttl-hours: 72
+  # Installments count as overdue after this grace period.
+  grace-hours: 24
+  # Overdue installments before default (short loans default when all are overdue). Company default = bankruptcy.
+  default-after-overdue-installments: 3
+  max-open-offers: 10
+  reputation:
+    late-installment: -3
+    default: -20
+    repaid: 2
+
 shops:
   max-listings-per-shop: 54
   max-bundles-per-purchase: 16

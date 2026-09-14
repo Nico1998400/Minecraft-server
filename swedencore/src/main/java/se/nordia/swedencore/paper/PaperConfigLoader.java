@@ -107,8 +107,19 @@ public final class PaperConfigLoader {
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
                 contracts(section(file, "contracts")), properties(section(file, "properties")), shops(section(file, "shops")),
-                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), production(productionFile, logger), defaultLocale,
+                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), production(productionFile, logger), loans(section(file, "loans")), defaultLocale,
                 db.getBoolean("shutdown-server-on-failure", true));
+    }
+
+    static se.nordia.swedencore.finance.LoanService.Config loans(ConfigurationSection s) {
+        var d = se.nordia.swedencore.finance.LoanService.Config.defaults();
+        return new se.nordia.swedencore.finance.LoanService.Config(
+                s.getInt("max-installments", d.maxInstallments()), s.getInt("min-interval-hours", d.minIntervalHours()),
+                s.getInt("max-interval-hours", d.maxIntervalHours()), s.getInt("max-interest-percent", d.maxInterestPercent()),
+                s.getInt("offer-ttl-hours", d.offerTtlHours()), s.getInt("grace-hours", d.graceHours()),
+                s.getInt("default-after-overdue-installments", d.defaultAfterOverdue()),
+                s.getInt("reputation.late-installment", d.lateReputation()), s.getInt("reputation.default", d.defaultReputation()),
+                s.getInt("reputation.repaid", d.repaidReputation()), s.getInt("max-open-offers", d.maxOpenOffers()));
     }
 
     static BuyOrderService.Config orders(ConfigurationSection s) {

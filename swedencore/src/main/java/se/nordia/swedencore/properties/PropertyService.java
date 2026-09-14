@@ -221,6 +221,30 @@ public final class PropertyService {
         return bought;
     }
 
+    /**
+     * Bankruptcy: seizes all properties of a company. They return to the market as AVAILABLE at their market value;
+     * shops close via the ownership hooks. Returns the seized property ids (publish events after commit).
+     */
+    public List<Long> seizeAllForCompany(Tx tx, long companyId) throws SQLException {
+        List<Long> ids = tx.queryList("SELECT id FROM properties WHERE owner_type = 'COMPANY' AND owner_id = ? ORDER BY id",
+                rs -> rs.getLong(1), Long.toString(companyId));
+        for (long id : ids) {
+            lock(tx, id);
+            tx.update("DELETE FROM property_trusted WHERE property_id = ?", id);
+            for (OwnershipChangeHook hook : ownershipHooks) {
+                hook.beforeOwnerChange(tx, id);
+            }
+            tx.update("""
+                    UPDATE properties SET owner_type = NULL, owner_id = NULL, status = 'AVAILABLE', price = market_value, updated_at = now()
+                    WHERE id = ?""", id);
+        }
+        return ids;
+    }
+
+    public void announceChanged(List<Long> propertyIds) {
+        propertyIds.forEach(id -> events.publish(new DomainEvent.PropertyChanged(id)));
+    }
+
     public Property listForSale(UUID actor, long propertyId, Money price) {
         if (!price.isPositive()) {
             throw new DomainException("economy.invalid_amount");

@@ -43,6 +43,12 @@ public enum TransactionType {
     ORDER_REFUND,
     /** Buy order listing fee (sink). */
     ORDER_FEE,
+    /** Loan principal paid out from lender to borrower. */
+    LOAN_PRINCIPAL,
+    /** Loan repayment from borrower to lender. */
+    LOAN_REPAYMENT,
+    /** A bankrupt company's remaining money distributed to a creditor. */
+    BANKRUPTCY_DISTRIBUTION,
     /** Settlement founding / upgrade costs. */
     SETTLEMENT_FEE,
     /** A resident contributes to the settlement treasury. */

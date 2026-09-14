@@ -4,6 +4,7 @@ import se.nordia.swedencore.companies.CompanyConfig;
 import se.nordia.swedencore.contracts.ContractConfig;
 import se.nordia.swedencore.database.DatabaseConfig;
 import se.nordia.swedencore.economy.EconomyConfig;
+import se.nordia.swedencore.finance.LoanService;
 import se.nordia.swedencore.localization.SupportedLocale;
 import se.nordia.swedencore.orders.BuyOrderService;
 import se.nordia.swedencore.production.ProductionService;
@@ -24,6 +25,7 @@ public record CoreConfig(
         SettlementConfig settlements,
         BuyOrderService.Config orders,
         ProductionService.Config production,
+        LoanService.Config loans,
         SupportedLocale defaultLocale,
         boolean shutdownOnDatabaseFailure
 ) {
@@ -32,6 +34,6 @@ public record CoreConfig(
         return new CoreConfig(database, EconomyConfig.defaults(), SkillsConfig.defaults(), CompanyConfig.defaults(),
                 ContractConfig.defaults(), PropertyService.Config.defaults(), ShopService.Config.defaults(),
                 SettlementConfig.defaults(), BuyOrderService.Config.defaults(), ProductionService.Config.defaults(),
-                SupportedLocale.SV_SE, true);
+                LoanService.Config.defaults(), SupportedLocale.SV_SE, true);
     }
 }

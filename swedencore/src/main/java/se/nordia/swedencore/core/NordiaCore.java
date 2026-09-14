@@ -3,6 +3,8 @@ package se.nordia.swedencore.core;
 import se.nordia.swedencore.cities.CityService;
 import se.nordia.swedencore.companies.CompanyService;
 import se.nordia.swedencore.events.DomainEvents;
+import se.nordia.swedencore.finance.BankruptcyService;
+import se.nordia.swedencore.finance.LoanService;
 import se.nordia.swedencore.properties.PropertyService;
 import se.nordia.swedencore.settlements.SettlementService;
 import se.nordia.swedencore.shops.ShopService;
@@ -56,6 +58,8 @@ public final class NordiaCore {
     private final ProfileService profiles;
     private final ProductionService production;
     private final MarketService market;
+    private final BankruptcyService bankruptcy;
+    private final LoanService loans;
 
     public NordiaCore(CoreConfig config, Database database, Clock clock, Logger logger) {
         this.config = config;
@@ -82,6 +86,17 @@ public final class NordiaCore {
         this.profiles = new ProfileService(database, economy, skills);
         this.production = new ProductionService(database, companies, stash, skills, config.production(), clock);
         this.market = new MarketService(database, clock, java.time.Duration.ofDays(7));
+        this.bankruptcy = new BankruptcyService(database, economy, companies, payroll, contracts, orders, properties, reputation,
+                events, clock, -15);
+        this.loans = new LoanService(database, economy, companies, reputation, bankruptcy, config.loans(), clock);
+    }
+
+    public BankruptcyService bankruptcy() {
+        return bankruptcy;
+    }
+
+    public LoanService loans() {
+        return loans;
     }
 
     public MarketService market() {

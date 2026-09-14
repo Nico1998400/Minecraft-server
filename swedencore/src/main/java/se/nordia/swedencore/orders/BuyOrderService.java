@@ -211,6 +211,16 @@ public final class BuyOrderService {
         });
     }
 
+    /** Bankruptcy: cancels the company's open buy orders, refunding escrow to the company. */
+    public int closeAllForCompany(Tx tx, long companyId) throws SQLException {
+        List<Long> ids = tx.queryList("SELECT id FROM buy_orders WHERE issuer_company_id = ? AND status = 'OPEN' ORDER BY id",
+                rs -> rs.getLong(1), companyId);
+        for (long id : ids) {
+            close(tx, lock(tx, id), "CANCELLED");
+        }
+        return ids.size();
+    }
+
     public List<BuyOrder> expireDue() {
         List<Long> due = database.inTransaction(tx -> tx.queryList(
                 "SELECT id FROM buy_orders WHERE status = 'OPEN' AND deadline_at <= ? ORDER BY deadline_at LIMIT 100",

@@ -22,4 +22,7 @@ public sealed interface DomainEvent {
 
     record ShopChanged(long shopId) implements DomainEvent {
     }
+
+    record CompanyBankrupt(long companyId, String reason) implements DomainEvent {
+    }
 }

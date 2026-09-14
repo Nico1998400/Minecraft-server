@@ -332,6 +332,18 @@ public final class ContractService {
         });
     }
 
+    /** Bankruptcy: cancels all active contracts issued by the company and refunds their escrow to the company. */
+    public int closeAllForCompany(Tx tx, long companyId) throws SQLException {
+        List<Long> ids = tx.queryList("SELECT id FROM contracts WHERE issuer_company_id = ? AND status IN ('OPEN', 'IN_PROGRESS') ORDER BY id",
+                rs -> rs.getLong(1), companyId);
+        for (long id : ids) {
+            Contract contract = lock(tx, id);
+            refund(tx, contract);
+            tx.update("UPDATE contracts SET status = 'CANCELLED', closed_at = now() WHERE id = ?", id);
+        }
+        return ids.size();
+    }
+
     /** Expires active contracts past their deadline. Returns the contracts that expired (for notifications). */
     public List<Contract> expireDue() {
         List<Long> due = database.inTransaction(tx -> tx.queryList(

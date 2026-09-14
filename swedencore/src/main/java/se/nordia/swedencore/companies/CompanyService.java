@@ -364,6 +364,14 @@ public final class CompanyService {
         return payout;
     }
 
+    /** Bankruptcy: closes hiring, releases all staff and marks the company BANKRUPT. The caller holds the company lock. */
+    public void markBankrupt(Tx tx, long companyId) throws SQLException {
+        tx.update("UPDATE job_applications SET status = 'CLOSED', decided_at = now() WHERE status = 'PENDING' AND position_id IN (SELECT id FROM job_positions WHERE company_id = ?)", companyId);
+        tx.update("UPDATE job_positions SET status = 'CLOSED', closed_at = now() WHERE company_id = ? AND status = 'OPEN'", companyId);
+        tx.update("UPDATE company_employees SET ended_at = now(), end_reason = 'BANKRUPTCY' WHERE company_id = ? AND ended_at IS NULL", companyId);
+        tx.update("UPDATE companies SET status = 'BANKRUPT', dissolved_at = now() WHERE id = ?", companyId);
+    }
+
     /** Lets other services (e.g. hiring) announce membership changes they performed. */
     public void announceMembershipChange(long companyId) {
         membershipChanged(companyId);

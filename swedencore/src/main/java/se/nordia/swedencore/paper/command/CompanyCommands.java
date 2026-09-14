@@ -81,6 +81,9 @@ public final class CompanyCommands {
                         .then(Commands.literal("confirm").executes(c -> dissolve(c, null, true)))
                         .then(Commands.argument("company", StringArgumentType.greedyString())
                                 .executes(c -> dissolve(c, StringArgumentType.getString(c, "company"), false))))
+                .then(Commands.literal("bankrupt")
+                        .executes(c -> bankrupt(c, false))
+                        .then(Commands.literal("confirm").executes(c -> bankrupt(c, true))))
                 .then(withCompany(Commands.literal("positions"), this::positions))
                 .then(Commands.literal("position")
                         .then(Commands.literal("create")
@@ -401,6 +404,42 @@ public final class CompanyCommands {
         svc.tasks().run(player, () -> resolve(uuid, ref, CompanyRole.OWNER), company -> {
             session.pendingConfirmation(new PlayerSession.PendingConfirmation("dissolve", company.id(), now + CONFIRM_WINDOW_MILLIS));
             svc.messages().send(player, "company.dissolve.confirm", "name", company.name());
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /** Voluntary bankruptcy for an indebted company (two-step confirmation). */
+    private int bankrupt(CommandContext<CommandSourceStack> c, boolean confirm) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        PlayerSession session = svc.sessions().get(uuid).orElse(null);
+        if (session == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        long now = System.currentTimeMillis();
+        if (!confirm) {
+            svc.tasks().run(player, () -> resolve(uuid, null, CompanyRole.OWNER), company -> {
+                session.pendingConfirmation(new PlayerSession.PendingConfirmation("bankrupt", company.id(), now + CONFIRM_WINDOW_MILLIS));
+                svc.messages().send(player, "bankruptcy.confirm", "name", company.name());
+            });
+            return Command.SINGLE_SUCCESS;
+        }
+        PlayerSession.PendingConfirmation pending = session.pendingConfirmation();
+        if (pending == null || !pending.matches("bankrupt", now)) {
+            svc.messages().send(player, "company.dissolve.nothing_to_confirm");
+            return Command.SINGLE_SUCCESS;
+        }
+        session.pendingConfirmation(null);
+        long companyId = pending.targetId();
+        svc.tasks().run(player, () -> {
+            Company company = companies().find(companyId).orElseThrow();
+            svc.core().bankruptcy().declare(companyId, se.nordia.swedencore.finance.BankruptcyService.Reason.VOLUNTARY, uuid);
+            return company;
+        }, company -> {
+            // The server-wide announcement is sent by the CompanyBankrupt event listener (covers loan defaults too).
         });
         return Command.SINGLE_SUCCESS;
     }

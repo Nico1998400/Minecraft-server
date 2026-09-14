@@ -18,6 +18,7 @@ import se.nordia.swedencore.paper.command.ContractCommands;
 import se.nordia.swedencore.paper.command.PropertyCommands;
 import se.nordia.swedencore.paper.command.SettlementCommands;
 import se.nordia.swedencore.paper.command.ShopCommands;
+import se.nordia.swedencore.paper.command.LoanCommands;
 import se.nordia.swedencore.paper.command.MarketCommand;
 import se.nordia.swedencore.paper.command.OrderCommands;
 import se.nordia.swedencore.paper.command.ProductionCommands;
@@ -178,6 +179,33 @@ public final class SwedenCorePlugin extends JavaPlugin {
                 }), 1200L, 1200L);
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async("expire buy orders", () -> core.orders().expireDue()),
                 1300L, 1200L);
+        // ---- loans: collect due installments every 5 minutes; announce defaults and bankruptcies
+        core.events().subscribe(event -> {
+            if (event instanceof se.nordia.swedencore.events.DomainEvent.CompanyBankrupt bankrupt) {
+                tasks.async(() -> core.companies().find(bankrupt.companyId())).whenComplete((company, error) -> {
+                    if (error == null && company.isPresent()) {
+                        tasks.sync(() -> getServer().getOnlinePlayers().forEach(p ->
+                                messages.send(p, "bankruptcy.broadcast", "name", company.get().name())));
+                    }
+                });
+            }
+        });
+        getServer().getScheduler().runTaskTimer(this, () -> tasks.async(() -> core.loans().collectDue())
+                .whenComplete((results, error) -> {
+                    if (error != null) {
+                        getLogger().log(Level.SEVERE, "Loan collection failed", Tasks.unwrap(error));
+                        return;
+                    }
+                    tasks.sync(() -> results.stream().filter(r -> r.defaulted()
+                                    && r.loan().borrowerType() == se.nordia.swedencore.finance.Loan.PartyType.PLAYER)
+                            .forEach(r -> {
+                                Player borrower = getServer().getPlayer(UUID.fromString(r.loan().borrowerId()));
+                                if (borrower != null) {
+                                    messages.send(borrower, "loan.defaulted_notice", "id", r.loan().id());
+                                }
+                            }));
+                }), 6000L, 6000L);
+
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async(() -> core.production().completeDue(ItemTransfer.CODEC))
                 .whenComplete((runs, error) -> {
                     if (error != null) {
@@ -209,6 +237,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new ProfileCommand(services).register(event.registrar());
             new ProductionCommands(services).register(event.registrar());
             new MarketCommand(services).register(event.registrar());
+            new LoanCommands(services).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 
