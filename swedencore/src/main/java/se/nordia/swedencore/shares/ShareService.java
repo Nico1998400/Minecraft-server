@@ -397,6 +397,50 @@ public final class ShareService {
         });
     }
 
+    /** One row of the share market overview. {@code bestAsk} counts public offers only. */
+    public record Listing(long companyId, String companyName, Money bestAsk, long askQuantity, Money lastPrice, long volume30d,
+                         Money turnover30d) {
+    }
+
+    /**
+     * Share market overview: active companies with public offers or recent trades, busiest first. There is no central
+     * order book or market maker — this only aggregates player offers and trade history.
+     */
+    public List<Listing> market(int limit) {
+        return database.inTransaction(tx -> {
+            Instant now = clock.instant();
+            Instant since = now.minus(Duration.ofDays(30));
+            return tx.queryList("""
+                            WITH asks AS (
+                                SELECT company_id, MIN(price_per_share) AS best FROM share_offers
+                                WHERE status = 'OPEN' AND buyer_uuid IS NULL AND expires_at > ? GROUP BY company_id),
+                            recent AS (
+                                SELECT company_id, SUM(quantity) AS volume, SUM(total) AS turnover FROM share_trades
+                                WHERE created_at >= ? GROUP BY company_id)
+                            SELECT c.id, c.name, a.best,
+                                   (SELECT COALESCE(SUM(o.remaining), 0) FROM share_offers o
+                                    WHERE o.company_id = c.id AND o.status = 'OPEN' AND o.buyer_uuid IS NULL AND o.expires_at > ?
+                                      AND o.price_per_share = a.best) AS ask_quantity,
+                                   (SELECT t.price_per_share FROM share_trades t WHERE t.company_id = c.id
+                                    ORDER BY t.created_at DESC, t.id DESC LIMIT 1) AS last_price,
+                                   COALESCE(r.volume, 0) AS volume, COALESCE(r.turnover, 0) AS turnover
+                            FROM companies c
+                            LEFT JOIN asks a ON a.company_id = c.id
+                            LEFT JOIN recent r ON r.company_id = c.id
+                            WHERE c.status = 'ACTIVE' AND (a.best IS NOT NULL OR r.volume IS NOT NULL)
+                            ORDER BY turnover DESC, c.name LIMIT ?""",
+                    rs -> {
+                        long best = rs.getLong("best");
+                        Money bestAsk = rs.wasNull() ? null : Money.ofOre(best);
+                        long last = rs.getLong("last_price");
+                        Money lastPrice = rs.wasNull() ? null : Money.ofOre(last);
+                        return new Listing(rs.getLong("id"), rs.getString("name"), bestAsk, rs.getLong("ask_quantity"), lastPrice,
+                                rs.getLong("volume"), Money.ofOre(rs.getLong("turnover")));
+                    },
+                    now, since, now, Math.clamp(limit, 1, 30));
+        });
+    }
+
     /** Largest shareholders of an active company, treasury included. */
     public List<Position> capTable(long companyId, int limit) {
         return database.inTransaction(tx -> tx.queryList(POSITIONS + " WHERE p.company_id = ? ORDER BY p.quantity + p.listed DESC LIMIT ?",

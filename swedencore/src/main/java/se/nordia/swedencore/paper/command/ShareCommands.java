@@ -46,6 +46,7 @@ public final class ShareCommands {
                         .then(Commands.argument("company", StringArgumentType.greedyString())
                                 .executes(c -> info(c, StringArgumentType.getString(c, "company")))))
                 .then(Commands.literal("portfolio").executes(this::portfolio))
+                .then(Commands.literal("market").executes(this::market))
                 .then(Commands.literal("offers")
                         .executes(c -> offers(c, null))
                         .then(Commands.argument("company", StringArgumentType.greedyString())
@@ -135,6 +136,23 @@ public final class ShareCommands {
             for (ShareService.Position p : positions) {
                 svc.messages().send(player, "shares.portfolio.entry", "company", p.companyName(), "id", p.companyId(),
                         "quantity", p.total(), "listed", p.listed());
+            }
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int market(CommandContext<CommandSourceStack> c) {
+        var sender = c.getSource().getSender();
+        svc.tasks().run(sender, () -> svc.core().shares().market(10), listings -> {
+            if (listings.isEmpty()) {
+                svc.messages().send(sender, "shares.market.empty");
+                return;
+            }
+            svc.messages().send(sender, "shares.market.header");
+            for (ShareService.Listing l : listings) {
+                svc.messages().send(sender, "shares.market.entry", "company", l.companyName(), "id", l.companyId(),
+                        "ask", l.bestAsk() == null ? "-" : l.bestAsk(), "ask_quantity", l.askQuantity(),
+                        "last", l.lastPrice() == null ? "-" : l.lastPrice(), "volume", l.volume30d(), "turnover", l.turnover30d());
             }
         });
         return Command.SINGLE_SUCCESS;

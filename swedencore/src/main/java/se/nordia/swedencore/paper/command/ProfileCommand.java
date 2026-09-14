@@ -69,6 +69,9 @@ public final class ProfileCommand {
             if (!p.companies().isEmpty()) {
                 svc.messages().send(viewer, "profile.companies", "companies", String.join(", ", p.companies()));
             }
+            if (!p.shareholdings().isEmpty()) {
+                svc.messages().send(viewer, "profile.shareholdings", "companies", String.join(", ", p.shareholdings()));
+            }
             if (p.settlement() != null) {
                 svc.messages().send(viewer, "profile.settlement", "settlement", p.settlement());
             }

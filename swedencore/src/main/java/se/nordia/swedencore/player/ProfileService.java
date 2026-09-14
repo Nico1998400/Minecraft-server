@@ -33,6 +33,7 @@ public final class ProfileService {
             int propertiesOwned,
             int contractsCompleted,
             int shopsRun,
+            List<String> shareholdings,
             Instant lastSeen
     ) {
     }
@@ -82,9 +83,18 @@ public final class ProfileService {
                     WHERE s.status = 'OPEN' AND ((p.owner_type = 'PLAYER' AND p.owner_id = ?::text)
                        OR (p.owner_type = 'COMPANY' AND p.owner_id IN (SELECT id::text FROM companies WHERE owner_uuid = ? AND status = 'ACTIVE')))""",
                     uuid, uuid);
+            // Share registers are public (see /shares info): list companies the player holds shares in, largest first.
+            List<String> holdings = tx.queryList("""
+                    SELECT c.name FROM (SELECT company_id, SUM(q) AS q FROM (
+                            SELECT company_id, quantity AS q FROM share_holdings WHERE holder_type = 'PLAYER' AND holder_id = ?::text
+                            UNION ALL
+                            SELECT company_id, remaining FROM share_offers WHERE status = 'OPEN' AND seller_type = 'PLAYER' AND seller_id = ?::text) u
+                        GROUP BY company_id) h
+                    JOIN companies c ON c.id = h.company_id
+                    WHERE c.status = 'ACTIVE' ORDER BY h.q DESC, c.name LIMIT 5""", rs -> rs.getString(1), uuid, uuid);
             return new Profile(player, balance, top, companies, settlement,
                     first == null ? null : first.title(), first == null ? null : first.company(),
-                    founded, properties, contracts, shops, player.lastSeen());
+                    founded, properties, contracts, shops, holdings, player.lastSeen());
         });
     }
 

@@ -60,17 +60,18 @@ logistics, warehouses and industry done. **P4 in progress:** shares, dividends a
 - [x] Shares (V15): 1 000 founder shares, treasury issuance, escrowed peer-to-peer share offers (public/private,
       partial fills, 1 % burned fee), dividends per share, valuation (book value, last/average price, market cap),
       shareholders block owner withdrawals and receive closing equity pro rata; `/shares` (`/aktier`)
-- [x] 189 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+- [x] Share market overview `/shares market` (best public ask, last price, 30-day volume/turnover per company — an
+      aggregation of player offers, no central order book or market maker); shareholdings in `/profile`
+- [x] 190 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
 2. **P4 #45 company investments:** let companies hold shares of other companies (holder type `COMPANY`), with the
    extraction risk in mind (a company buying an accomplice's shares at an inflated price). Consider a price guard
    (e.g. max multiple of book value) or requiring no outside shareholders in the buying company.
-3. **P4 #43 stock market:** optional exchange view over share offers (best bid/ask per company, `/shares market`);
-   keep it peer-to-peer — no NPC market maker, no money creation.
-4. Show share holdings in `/profile` and dividends/share sales in `/company finance` (types already classified).
-5. GUI menus for common flows (job board, company management) — optional polish.
+3. **P4 #43 stock market, bids:** escrowed buy-side share bids (money escrowed like buy orders) so sellers can hit a
+   bid; together with asks this forms a peer-to-peer order book. No NPC market maker, no money creation.
+4. GUI menus for common flows (job board, company management) — optional polish.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.

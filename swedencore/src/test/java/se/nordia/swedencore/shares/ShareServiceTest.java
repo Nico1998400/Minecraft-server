@@ -160,6 +160,30 @@ class ShareServiceTest extends CoreTest {
     }
 
     @Test
+    void marketOverviewAndProfileShowPublicActivity() {
+        assertThat(shares.market(10)).isEmpty();
+        Company other = core.companies().found(investor, "Konkurrenten");
+        shares.offer(owner, company.id(), false, 30, Money.ofSek(12), null, 24);
+        shares.offer(owner, company.id(), false, 20, Money.ofSek(12), null, 24);
+        shares.offer(owner, company.id(), false, 10, Money.ofSek(9), investor, 24); // private: not an ask
+        var cheap = shares.offer(investor, other.id(), false, 5, Money.ofSek(3), null, 24);
+        shares.buy(owner, cheap.id(), 5);
+
+        var market = shares.market(10);
+        assertThat(market).extracting(ShareService.Listing::companyName).containsExactly("Konkurrenten", "Aktiebolaget");
+        var listing = market.get(1);
+        assertThat(listing.bestAsk()).isEqualTo(Money.ofSek(12));
+        assertThat(listing.askQuantity()).isEqualTo(50);
+        assertThat(listing.lastPrice()).isNull();
+        assertThat(market.getFirst().volume30d()).isEqualTo(5);
+        assertThat(market.getFirst().bestAsk()).isNull();
+
+        assertThat(core.profiles().profile(owner).shareholdings()).containsExactly("Aktiebolaget", "Konkurrenten");
+        clock.advance(Duration.ofDays(31));
+        assertThat(shares.market(10)).isEmpty();
+    }
+
+    @Test
     void solventBankruptcyPaysTheResidualToShareholders() {
         UUID lender = player("Lender");
         grant(lender, 5_000);
