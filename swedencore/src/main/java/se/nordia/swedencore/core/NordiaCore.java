@@ -80,7 +80,7 @@ public final class NordiaCore {
         this.payroll = new PayrollService(database, economy, reputation, config.companies(), clock);
         this.companies = new CompanyService(database, economy, payroll, config.companies(), events);
         this.jobs = new JobService(database, companies, skills);
-        this.stash = new ItemStashService(database, companies);
+        this.stash = new ItemStashService(database, companies, config.storage());
         this.contracts = new ContractService(database, economy, companies, skills, reputation, stash, config.contracts(), clock);
         this.cities = new CityService(database, economy);
         this.properties = new PropertyService(database, economy, companies, cities, events, config.properties());

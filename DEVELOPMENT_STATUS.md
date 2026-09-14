@@ -4,7 +4,7 @@ _Last updated: 2026-09-14_
 
 ## Current phase
 **P0, P1, P2 complete (MVP). P3 in progress:** market statistics, loans, bankruptcy, company finance, renting and
-logistics done; warehouses next.
+logistics and warehouses done.
 
 ## Environment verified
 - Paper 26.2 build 123 (STABLE) — requires Java 25
@@ -49,15 +49,16 @@ logistics done; warehouses next.
 - [x] Property renting (V12): listings, tenancy with exclusive use, rent collection, eviction; occupant concept used by
       protection, shops, production and work sites; `/property rentals|rent-out|rent|move-out|end-lease`
 - [x] Logistics (V13): transport jobs with physical pickup/delivery, collateral, Logistics XP; `/transports`, `/transport`
-- [x] 176 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+- [x] Warehouses: stash capacity in stacks (config `storage`), +1 080 per occupied WAREHOUSE; enforced on voluntary
+      inflows under a per-stash advisory lock; `/stash` shows used/capacity
+- [x] 178 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-2. **Warehouses (P3 #39)**: WAREHOUSE properties raise a company's stash capacity; introduce stash capacity limits.
-3. **Vehicles (P3 #40)** — optional; could reuse minecart/boat entities with cargo capacity for transports.
-4. **P4 — company valuation & shares** (only once P3 is stable): valuation from `CompanyFinanceService` (equity,
+2. **Vehicles (P3 #40)** — optional; could reuse minecart/boat entities with cargo capacity for transports.
+3. **P4 — company valuation & shares** (only once P3 is stable): valuation from `CompanyFinanceService` (equity,
    30-day operating result, reputation), share registry, dividends.
-5. GUI menus for common flows (job board, company management) — optional polish.
+4. GUI menus for common flows (job board, company management) — optional polish.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.
@@ -68,5 +69,8 @@ logistics done; warehouses next.
   physical transport.
 - Bankruptcy does not cancel the company's OPEN transport jobs; they expire later and refund into the (empty) bankrupt
   company account. Carriers IN_TRANSIT can still deliver and get paid from escrow.
+- Stash capacity is not enforced on transport delivery, shop/trade fallbacks or refunds (by design: never lose items).
+  A stash can therefore exceed capacity; it then only blocks new voluntary inflows until items are claimed.
+- Work-site output that overflows to the worker is not announced in chat yet.
 - Dev harness (not committed) drives the server console via redirected stdin; the first command is eaten by a BOM.
 - Windows PowerShell 5.1: commit messages containing double quotes break `git commit -m`; use `git commit -F file`.

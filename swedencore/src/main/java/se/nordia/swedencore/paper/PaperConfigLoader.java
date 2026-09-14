@@ -107,7 +107,7 @@ public final class PaperConfigLoader {
 
         return new CoreConfig(database, economy, skills(section(file, "skills")), companies(section(file, "companies")),
                 contracts(section(file, "contracts")), properties(section(file, "properties")), shops(section(file, "shops")),
-                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), production(productionFile, logger), loans(section(file, "loans")), leases(section(file, "renting")), defaultLocale,
+                settlements(section(file, "settlements")), orders(section(file, "buy-orders")), production(productionFile, logger), loans(section(file, "loans")), leases(section(file, "renting")), storage(section(file, "storage")), defaultLocale,
                 db.getBoolean("shutdown-server-on-failure", true));
     }
 
@@ -127,6 +127,12 @@ public final class PaperConfigLoader {
         return new se.nordia.swedencore.properties.LeaseService.Config(s.getInt("min-period-hours", d.minPeriodHours()),
                 s.getInt("max-period-hours", d.maxPeriodHours()), s.getInt("grace-hours", d.graceHours()),
                 s.getInt("eviction-reputation", d.evictionReputation()));
+    }
+
+    static se.nordia.swedencore.inventory.ItemStashService.Capacity storage(ConfigurationSection s) {
+        var d = se.nordia.swedencore.inventory.ItemStashService.Capacity.defaults();
+        return new se.nordia.swedencore.inventory.ItemStashService.Capacity(s.getInt("player-stacks", d.playerBase()),
+                s.getInt("company-stacks", d.companyBase()), s.getInt("stacks-per-warehouse", d.perWarehouse()));
     }
 
     static BuyOrderService.Config orders(ConfigurationSection s) {

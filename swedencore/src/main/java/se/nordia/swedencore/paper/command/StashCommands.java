@@ -17,6 +17,7 @@ import se.nordia.swedencore.paper.session.PlayerSession;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -78,9 +79,15 @@ public final class StashCommands {
             return Command.SINGLE_SUCCESS;
         }
         UUID uuid = player.getUniqueId();
-        svc.tasks().run(player, () -> svc.core().stash().summary(owner(uuid, company, ref)), summary -> {
+        svc.tasks().run(player, () -> {
+            ItemStashService.Owner owner = owner(uuid, company, ref);
+            return Map.entry(svc.core().stash().summary(owner), svc.core().stash().usage(owner));
+        }, result -> {
+            List<ItemStashService.MaterialCount> summary = result.getKey();
+            ItemStashService.Usage usage = result.getValue();
             if (summary.isEmpty()) {
                 svc.messages().send(player, "stash.empty");
+                svc.messages().send(player, "stash.usage", "used", usage.used(), "capacity", usage.capacity());
                 return;
             }
             svc.messages().send(player, "stash.header");
@@ -89,6 +96,7 @@ public final class StashCommands {
                 Component name = material == null ? Component.text(entry.material()) : Component.translatable(material.translationKey());
                 svc.messages().send(player, "stash.entry", "material", name, "amount", entry.total());
             }
+            svc.messages().send(player, "stash.usage", "used", usage.used(), "capacity", usage.capacity());
             svc.messages().send(player, company ? "stash.claim_hint_company" : "stash.claim_hint");
         });
         return Command.SINGLE_SUCCESS;

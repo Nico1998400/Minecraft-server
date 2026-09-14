@@ -175,6 +175,7 @@ public final class BuyOrderService {
             ItemStashService.Owner owner = order.issuerType() == BuyOrder.IssuerType.PLAYER
                     ? ItemStashService.Owner.player(order.issuerPlayer())
                     : ItemStashService.Owner.company(order.issuerCompanyId());
+            stash.requireCapacity(tx, owner, items.size());
             stash.deposit(tx, owner, items, "ORDER", Long.toString(orderId));
             boolean complete = order.filled() + sold == order.quantity();
             tx.update("""

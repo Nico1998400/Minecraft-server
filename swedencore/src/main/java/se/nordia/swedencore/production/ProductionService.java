@@ -130,6 +130,14 @@ public final class ProductionService {
             Map<String, Integer> inputs = new HashMap<>();
             recipe.inputs().forEach((material, amount) -> inputs.put(material, Math.multiplyExact(amount, batches)));
             stash.consumePristine(tx, ItemStashService.Owner.company(companyId), inputs, codec, operator);
+            // Reserve room for the outputs now so a finished run never overflows the inventory.
+            long outputStacks = 0;
+            for (Map.Entry<String, Integer> output : recipe.outputs().entrySet()) {
+                int maxStack = Math.clamp(codec.maxStackSize(output.getKey()), 1, ItemStashService.MAX_STACK);
+                long amount = (long) output.getValue() * batches;
+                outputStacks += (amount + maxStack - 1) / maxStack;
+            }
+            stash.requireCapacity(tx, ItemStashService.Owner.company(companyId), outputStacks);
             Instant now = clock.instant();
             Instant finishes = now.plus(Duration.ofSeconds((long) recipe.seconds() * batches));
             long id = tx.queryLong("""

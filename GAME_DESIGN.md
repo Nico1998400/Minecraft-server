@@ -188,6 +188,16 @@ goods for the issuer, pays the reward, returns the collateral and grants Logisti
 If the deadline passes in transit, the issuer gets the reward back plus the collateral as compensation and the carrier
 loses reputation. Collateral is what makes cargo theft unprofitable; later crime (P5) can build on this.
 
+## 10e. Storage and warehouses
+
+Stashes (the virtual inventories behind deliveries, orders, production and work sites) are finite, measured in stacks:
+players 108, companies 216. Every WAREHOUSE property the owner **occupies** (owns and has not leased out, or rents)
+adds 1 080 stacks. Scaling a supply chain therefore needs real estate, and warehouses become something worth building,
+renting out and trading. The limit applies to voluntary inflows only: company deposits, contract deliveries, buy-order
+fills and production (output space is reserved when a run starts, so a finished run never overflows). Safety paths
+never fail on space — refunds, returned cargo and cancelled trades always come back, and work-site output that does not
+fit the company stash goes to the worker instead of disappearing.
+
 ## 10c. Market statistics
 
 `/market <item>` shows the volume-weighted average price per item over the last 7 days from shop sales and buy-order

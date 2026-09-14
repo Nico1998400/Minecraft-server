@@ -248,6 +248,7 @@ public final class ContractService {
                         TransactionType.CONTRACT_PAYOUT, "contract-delivery:" + deliveryId);
                 tx.update("UPDATE contract_deliveries SET transaction_id = ? WHERE id = ?", receipt.transactionId(), deliveryId);
             }
+            stash.requireCapacity(tx, issuerStashOwner(contract), items.size());
             stash.deposit(tx, issuerStashOwner(contract), items, "CONTRACT", Long.toString(contractId));
             tx.update("""
                             UPDATE contracts SET delivered = ?, paid_out = ?,

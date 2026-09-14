@@ -123,12 +123,57 @@ public final class ItemStashService {
     public record StashEntry(long id, String material, int amount, byte[] data, String sourceType, String sourceId, Instant createdAt) {
     }
 
+    /**
+     * Storage capacity in stacks. Warehouses the owner occupies (owned and not leased out, or rented) add capacity.
+     */
+    public record Capacity(int playerBase, int companyBase, int perWarehouse) {
+        public static Capacity defaults() {
+            return new Capacity(108, 216, 1_080);
+        }
+    }
+
+    public record Usage(long used, long capacity) {
+        public long free() {
+            return Math.max(0, capacity - used);
+        }
+    }
+
     private final Database database;
     private final CompanyService companies;
+    private final Capacity capacity;
 
-    public ItemStashService(Database database, CompanyService companies) {
+    public ItemStashService(Database database, CompanyService companies, Capacity capacity) {
         this.database = database;
         this.companies = companies;
+        this.capacity = capacity;
+    }
+
+    public Usage usage(Owner owner) {
+        return database.inTransaction(tx -> usage(tx, owner));
+    }
+
+    public Usage usage(Tx tx, Owner owner) throws SQLException {
+        long used = tx.queryLong("SELECT count(*) FROM item_stash WHERE owner_type = ? AND owner_id = ? AND claimed_at IS NULL",
+                owner.type(), owner.id());
+        long warehouses = tx.queryLong("""
+                SELECT count(*) FROM properties p
+                LEFT JOIN property_leases le ON le.property_id = p.id AND le.status IN ('ACTIVE', 'OVERDUE')
+                WHERE p.type = 'WAREHOUSE' AND COALESCE(le.tenant_type, p.owner_type) = ? AND COALESCE(le.tenant_id, p.owner_id) = ?""",
+                owner.type(), owner.id());
+        long base = owner.type() == OwnerType.COMPANY ? capacity.companyBase() : capacity.playerBase();
+        return new Usage(used, base + warehouses * capacity.perWarehouse());
+    }
+
+    /**
+     * Serialises deposits for one owner and fails with {@code stash.full} if {@code stacks} more would not fit.
+     * Use for voluntary inflows only; safety paths (refunds, returns) deposit without a capacity check.
+     */
+    public void requireCapacity(Tx tx, Owner owner, long stacks) throws SQLException {
+        tx.queryOne("SELECT pg_advisory_xact_lock(hashtext(?))", rs -> true, "stash:" + owner.type() + ":" + owner.id());
+        Usage usage = usage(tx, owner);
+        if (usage.used() + stacks > usage.capacity()) {
+            throw DomainException.of("stash.full", "used", usage.used(), "capacity", usage.capacity());
+        }
     }
 
     public void deposit(Tx tx, Owner owner, List<StashItem> items, String sourceType, String sourceId) throws SQLException {
@@ -154,6 +199,7 @@ public final class ItemStashService {
         database.inTransactionVoid(tx -> {
             companies.lockActive(tx, companyId);
             companies.requireRole(tx, companyId, actor, CompanyRole.values());
+            requireCapacity(tx, Owner.company(companyId), items.size());
             deposit(tx, Owner.company(companyId), items, "MEMBER_DEPOSIT", token.toString());
         });
     }
@@ -171,7 +217,15 @@ public final class ItemStashService {
                 deposit(tx, Owner.player(employee), items, "WORK_OUTPUT_RETURNED", Long.toString(companyId));
                 return;
             }
-            deposit(tx, Owner.company(companyId), items, "WORK_OUTPUT", employee.toString());
+            Owner company = Owner.company(companyId);
+            tx.queryOne("SELECT pg_advisory_xact_lock(hashtext(?))", rs -> true, "stash:COMPANY:" + companyId);
+            Usage usage = usage(tx, company);
+            if (usage.used() + items.size() > usage.capacity()) {
+                // The company has no room: the worker keeps the output rather than losing it.
+                deposit(tx, Owner.player(employee), items, "WORK_OUTPUT_OVERFLOW", Long.toString(companyId));
+                return;
+            }
+            deposit(tx, company, items, "WORK_OUTPUT", employee.toString());
         });
     }
 

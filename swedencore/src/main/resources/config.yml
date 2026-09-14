@@ -66,6 +66,12 @@ properties:
   # City land outside properties is public space: nobody builds there (admins with nordia.admin.property.bypass can).
   protect-city-land: true
 
+storage:
+  # Inventory (stash) capacity in stacks. Each WAREHOUSE property the owner occupies adds stacks-per-warehouse.
+  player-stacks: 108
+  company-stacks: 216
+  stacks-per-warehouse: 1080
+
 renting:
   min-period-hours: 24
   max-period-hours: 720
