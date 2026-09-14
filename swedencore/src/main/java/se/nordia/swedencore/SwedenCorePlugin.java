@@ -18,6 +18,8 @@ import se.nordia.swedencore.paper.command.ContractCommands;
 import se.nordia.swedencore.paper.command.PropertyCommands;
 import se.nordia.swedencore.paper.command.SettlementCommands;
 import se.nordia.swedencore.paper.command.ShopCommands;
+import se.nordia.swedencore.paper.command.TradeCommands;
+import se.nordia.swedencore.paper.trade.TradeManager;
 import se.nordia.swedencore.paper.shops.ShopIndex;
 import se.nordia.swedencore.paper.shops.ShopListener;
 import se.nordia.swedencore.paper.command.StashCommands;
@@ -140,6 +142,12 @@ public final class SwedenCorePlugin extends JavaPlugin {
         registerListeners(shopIndex, new ShopListener(core, shopIndex, protection, messages, tasks));
         shopIndex.queueReload();
 
+        // ---- direct trade
+        TradeManager tradeManager = new TradeManager(core, messages, tasks);
+        registerListeners(tradeManager);
+        getServer().getScheduler().runTaskTimer(this, tradeManager::tick, 20L, 20L);
+        shutdownHooks.addFirst(tradeManager::cancelAll);
+
         // ---- contracts: expire overdue contracts every minute and tell online parties
         getServer().getScheduler().runTaskTimer(this, () -> tasks.async(() -> core.contracts().expireDue())
                 .whenComplete((expired, error) -> {
@@ -169,6 +177,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new PropertyCommands(services, protection).register(event.registrar());
             new ShopCommands(services, shopIndex, protection).register(event.registrar());
             new SettlementCommands(services).register(event.registrar());
+            new TradeCommands(services, tradeManager).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

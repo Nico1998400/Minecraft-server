@@ -33,6 +33,8 @@ public enum TransactionType {
     PROPERTY_PURCHASE,
     /** A player buys goods in a physical shop. */
     SHOP_PURCHASE,
+    /** Money offered in a direct player-to-player trade. */
+    TRADE,
     /** Settlement founding / upgrade costs. */
     SETTLEMENT_FEE,
     /** A resident contributes to the settlement treasury. */
