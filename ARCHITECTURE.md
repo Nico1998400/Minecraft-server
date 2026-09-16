@@ -44,7 +44,7 @@
 | `production` / `market` | Recipes at facility properties; 7-day market statistics |
 | `finance` | Loans, bankruptcy |
 | `logistics` | Transport jobs with collateral |
-| `shares` | Share registry, escrowed share offers, dividends, valuation, closing equity |
+| `shares` | Share registry, escrowed offers and bids, company holdings, dividends, valuation, closing equity |
 | `player` | Registration and profiles |
 | `events` | Domain events published after commit |
 | `paper` | Everything that touches Bukkit/Paper/Adventure |
@@ -57,7 +57,8 @@ Later modules must be able to veto or react to earlier ones without the earlier 
 `CompanyService.addDissolutionCheck` (contracts, properties, orders, leases, transports), `PropertyService.addOwnershipChangeHook`
 (leases end on a new owner), `PropertyService.addOccupancyChangeHook` (shops close when the occupant changes — sale,
 seizure, tenancy start/end), `CityService.addPlacementCheck` (settlements), `CompanyService.addFoundingHook` (initial
-shares), `CompanyService.addWithdrawalCheck` (shareholders block owner withdrawals) and
+shares), `CompanyService.addWithdrawalCheck` (shareholders block owner withdrawals),
+`CompanyService.addPreCloseHook` (share bids/offers unwind so escrow returns before residual cash is read) and
 `CompanyService.setEquityCloser` (shares decide who receives a closing company's residual in dissolution and solvent
 bankruptcy; the default pays the owner). Hooks run inside the caller's transaction.
 

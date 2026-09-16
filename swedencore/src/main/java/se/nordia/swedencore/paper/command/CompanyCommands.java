@@ -426,7 +426,7 @@ public final class CompanyCommands {
                     "result", i.operatingResult().isNegative() ? i.operatingResult().negate() : i.operatingResult(),
                     "in", i.financingIn(), "out", i.financingOut());
             svc.messages().send(player, "company.finance.balance", "cash", b.cash(), "properties", b.properties(),
-                    "receivables", b.receivables(), "debt", b.debt(), "arrears", b.wageArrears());
+                    "receivables", b.receivables(), "investments", b.investments(), "debt", b.debt(), "arrears", b.wageArrears());
             svc.messages().send(player, "company.finance.equity", "equity", b.equity(), "employees", b.employees());
         });
         return Command.SINGLE_SUCCESS;

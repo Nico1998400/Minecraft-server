@@ -141,10 +141,19 @@ Ownership of a company's **value** is separate from **control** (the OWNER role,
   escrowed so they cannot be sold twice; buyers may take part of an offer. The seller pays a 1 % fee that is destroyed,
   so wash trading to fake a price costs money. There is no central exchange or order matching — offers are
   peer-to-peer listings, in the spirit of "no auction house"; a real stock market (#43) can build on this later.
-- **Bids:** a player can bid for shares at a price; price × quantity is escrowed. Holders (or the owner, from the
+- **Bids:** a player or a company can bid for shares at a price; price × quantity is escrowed. Holders (or the owner, from the
   treasury) sell into the bid and are paid from escrow minus the fee; the rest is refunded on cancel, expiry or when
   the company closes. Offers (asks) and bids together are a player-run order book; `/shares market` shows best bid,
   best ask, last price and volume.
+- **Company investments:** a company may hold shares of *other* companies (`COMPANY` holder; never its own — that stays
+  the treasury). The owner buys, bids and sells with company money (`/shares buy-company`, `bid-company`, `sell-company`,
+  `holdings`). Dividends and closing equity are paid to the holding company's account. A company shareholder counts as an
+  outside shareholder of the target (the target's owner cannot withdraw). When the holding company closes, its bids and
+  listings are cancelled and remaining holdings are split pro rata among its shareholders.
+- **Extraction guard:** if the acting company has outside shareholders, it cannot pay more than
+  `max-investment-book-multiple` times the target's book value per share, nor sell below book / multiple. Wholly-owned
+  companies are unrestricted — the owner could withdraw the cash and trade personally anyway. Wage arrears block
+  purchases and bids.
 - **Dividends:** the owner pays an amount from the company account, split equally per share among all shares outside
   the treasury (listed shares included); undivisible öre stay in the company. Blocked while wages are owed.
 - **Protection of shareholders:** while anyone other than the owner holds shares, the owner **cannot withdraw** company
@@ -277,8 +286,8 @@ in the ledger, and never the best deal for goods players can supply.
 ## 13. Future phases (architecture-aware, not implemented)
 
 - **P3:** dynamic market prices, banking & loans, logistics & vehicles, warehouses, industry, company finance, bankruptcy.
-- **P4:** shares, dividends and valuation are implemented (§8b). Remaining: stock market / exchange (#43) and company
-  investments (#45, companies holding shares of other companies).
+- **P4:** shares, dividends, valuation and company investments are implemented (§8b). Remaining: stock market /
+  exchange (#43).
 - **P5:** crime (smuggling, theft, black markets), police, courts, government, elections, taxes, dynamic news from real
   events, player history.
 

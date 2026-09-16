@@ -354,6 +354,7 @@ public final class CompanyService {
             for (DissolutionCheck check : dissolutionChecks) {
                 check.verify(tx, companyId);
             }
+            prepareClose(tx, companyId);
             Account companyAccount = economy.requireAccount(tx, AccountOwner.company(companyId));
             Money remaining = companyAccount.balance();
             closeEquity(tx, find(tx, companyId).orElseThrow(), remaining, actor);
@@ -389,6 +390,7 @@ public final class CompanyService {
     private final List<DissolutionCheck> dissolutionChecks = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<DissolutionCheck> withdrawalChecks = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final List<FoundingHook> foundingHooks = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<PreCloseHook> preCloseHooks = new java.util.concurrent.CopyOnWriteArrayList<>();
     private volatile EquityCloser equityCloser = CompanyService::payResidualToOwner;
 
     public void addDissolutionCheck(DissolutionCheck check) {
@@ -408,6 +410,25 @@ public final class CompanyService {
 
     public void addFoundingHook(FoundingHook hook) {
         foundingHooks.add(hook);
+    }
+
+    /**
+     * Runs before remaining cash is read on dissolution or bankruptcy (e.g. refund share-bid escrow into the company).
+     * Called with the company locked.
+     */
+    @FunctionalInterface
+    public interface PreCloseHook {
+        void run(Tx tx, long companyId) throws SQLException;
+    }
+
+    public void addPreCloseHook(PreCloseHook hook) {
+        preCloseHooks.add(hook);
+    }
+
+    public void prepareClose(Tx tx, long companyId) throws SQLException {
+        for (PreCloseHook hook : preCloseHooks) {
+            hook.run(tx, companyId);
+        }
     }
 
     /**

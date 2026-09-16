@@ -113,6 +113,7 @@ public final class BankruptcyService {
             contracts.closeAllForCompany(tx, companyId);
             orders.closeAllForCompany(tx, companyId);
             transports.closeOpenForCompany(tx, companyId);
+            companies.prepareClose(tx, companyId);
             List<Long> seized = new java.util.ArrayList<>(leases.endAllForTenantCompany(tx, companyId));
             seized.addAll(properties.seizeAllForCompany(tx, companyId));
 

@@ -140,7 +140,8 @@ public final class PaperConfigLoader {
         var d = se.nordia.swedencore.shares.ShareService.Config.defaults();
         return new se.nordia.swedencore.shares.ShareService.Config(s.getLong("initial-shares", d.initialShares()),
                 s.getLong("max-total-shares", d.maxTotalShares()), s.getInt("fee-percent", d.feePercent()),
-                s.getInt("max-offer-hours", d.maxOfferHours()), s.getInt("max-open-offers", d.maxOpenOffers()));
+                s.getInt("max-offer-hours", d.maxOfferHours()), s.getInt("max-open-offers", d.maxOpenOffers()),
+                s.getInt("max-investment-book-multiple", d.maxInvestmentBookMultiple()));
     }
 
     static BuyOrderService.Config orders(ConfigurationSection s) {

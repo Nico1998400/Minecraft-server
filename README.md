@@ -40,7 +40,7 @@ The plugin jar is built to `swedencore/build/libs/SwedenCore-<version>.jar`.
 | Places | `/property` (`/fastighet`), `/city` (`/stad`), `/settlement` (`/by`) |
 | Goods | `/shop` (`/butik`), `/shops find` (`/butiker`), `/stash` (`/forrad`) |
 | Industry | `/production` (`/produktion`), `/transports` (`/frakter`), `/transport` (`/frakt`), `/market` (`/marknad`) |
-| Finance | `/loan` (`/lan`), `/shares` (`/aktier`) — portfolio, offers, issue, dividends |
+| Finance | `/loan` (`/lan`), `/shares` (`/aktier`) — portfolio, offers, company holdings, dividends |
 | Admin | `/eco`, `/nordia reload`, `/property admin`, `/city admin` |
 
 ## Tech

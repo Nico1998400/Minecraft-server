@@ -1,16 +1,18 @@
 # Development Status
 
-_Last updated: 2026-09-14_
+_Last updated: 2026-09-16_
 
 ## Current phase
 **P0, P1, P2 complete (MVP). P3 feature-complete:** market statistics, loans, bankruptcy, company finance, renting,
-logistics, warehouses and industry done. **P4 in progress:** shares, dividends and valuation done.
+logistics, warehouses and industry done. **P4 in progress:** shares, dividends, valuation, bids and company investments
+done. Remaining: stock market / exchange (#43).
 
 ## Environment verified
 - Paper 26.2 build 123 (STABLE) — requires Java 25
 - Java 25 (Temurin, auto-provisioned by Gradle toolchain); Gradle 9.7.1 wrapper
 - PostgreSQL 18 via `docker compose` for dev; embedded PostgreSQL 18 for tests (works on Windows, no Docker)
-- Plugin verified on a real Paper 26.2 server after every feature: loads, migrates (V1–V15; V16 tested only in the embedded test database so far), commands respond, clean shutdown
+- Plugin verified on a real Paper 26.2 server after every feature: loads, migrates (V1–V15; V16–V17 tested only in the
+  embedded test database so far), commands respond, clean shutdown
 - **Not verified with a real game client** (none available in the dev environment). Gameplay listeners and GUIs
   (XP from blocks, duty payroll, deliveries, shop chests, trade window, work sites, protection) are covered by domain
   tests only. First playtest should focus on: trade window clicks, shop purchase flow, work-site drops, protection.
@@ -65,15 +67,21 @@ logistics, warehouses and industry done. **P4 in progress:** shares, dividends a
 - [x] Share bids (V16): escrowed buy-side bids (`SHARE_BID` escrow accounts), sellers fill with free or treasury shares,
       refunds on cancel/expiry/company close; best bid in `/shares market`; `/shares bid|bids|sell-to|sell-treasury-to|cancel-bid`.
       Asks + bids = peer-to-peer order book (no matching engine, no market maker)
-- [x] 193 tests (domain, concurrency, exploits, localization completeness, architecture rules)
+- [x] Company investments (V17, P4 #45): companies hold shares of other companies; dividends and closing equity go to
+      the holding company; holdings count as outside shareholders of the target. `/shares buy-company|bid-company|
+      sell-company|sell-company-to|holdings`. Extraction guard: if the acting company has outside shareholders, buys
+      cannot exceed `max-investment-book-multiple` × book value per share and sales cannot go below book / multiple
+      (default 3). Wholly-owned companies are unrestricted. Wage arrears block purchases. On close, listings/bids unwind
+      before residual cash is read and remaining holdings are split pro rata. Balance sheet `investments` line uses the
+      target's operating book (no nested mark-to-market).
+- [x] 203 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ## Next steps (exact)
 1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-2. **P4 #45 company investments:** let companies hold shares of other companies (holder type `COMPANY`), with the
-   extraction risk in mind (a company buying an accomplice's shares at an inflated price). Consider a price guard
-   (e.g. max multiple of book value) or requiring no outside shareholders in the buying company.
-3. Smoke-test V16 on the dev Paper server (not yet done for share bids; domain tests pass).
-4. GUI menus for common flows (job board, company management) — optional polish.
+2. Smoke-test V16 and V17 on the dev Paper server (share bids and company investments: domain tests pass, not yet loaded
+   on the real server).
+3. GUI menus for common flows (job board, company management) — optional polish.
+4. P4 #43 stock market / exchange — only if playtests show peer-to-peer offers and bids are not enough.
 5. Then P5 planning (society: crime, police, government) — only after a playtest confirms P0–P2 work in-game.
 
 ## Known issues / notes
@@ -91,6 +99,7 @@ logistics, warehouses and industry done. **P4 in progress:** shares, dividends a
 - Work-site output that overflows to the worker is not announced in chat yet.
 - Shares: an owner can still move value to an accomplice via inflated contracts, purchases, loans or salaries; only
   direct withdrawals are blocked. Share purchases have no idempotency token (a repeated command buys again, as asked).
+  The investment price guard only covers company-to-share trades against book value, not those other channels.
 - Shares: closing-equity payouts use one transfer per holder; a payout above `economy.max-transfer` would make the
   dissolution fail (same limit as before shares).
 - Dev harness (not committed) drives the server console via redirected stdin; the first command is eaten by a BOM.

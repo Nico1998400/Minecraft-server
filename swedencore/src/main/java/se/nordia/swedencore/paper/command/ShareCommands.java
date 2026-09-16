@@ -21,7 +21,8 @@ import java.util.UUID;
 
 /**
  * {@code /shares} (alias {@code /aktier}): company shares. Companies are given as {@code #id} or a one-word name;
- * owner actions ({@code issue}, {@code sell-treasury}, {@code dividend}) use the selected company or the only one owned.
+ * owner actions ({@code issue}, {@code sell-treasury}, {@code dividend}, {@code buy-company}, {@code holdings}) use the
+ * selected company or the only one owned.
  */
 public final class ShareCommands {
 
@@ -76,6 +77,20 @@ public final class ShareCommands {
                         .then(Commands.argument("bid", LongArgumentType.longArg(1)).executes(this::cancelBid)))
                 .then(Commands.literal("dividend")
                         .then(Commands.argument("amount", StringArgumentType.word()).executes(this::dividend)))
+                .then(Commands.literal("holdings").executes(this::holdings))
+                .then(Commands.literal("buy-company")
+                        .then(Commands.argument("offer", LongArgumentType.longArg(1))
+                                .then(Commands.argument("quantity", LongArgumentType.longArg(1)).executes(this::buyCompany))))
+                .then(Commands.literal("bid-company")
+                        .then(Commands.argument("company", StringArgumentType.word())
+                                .then(Commands.argument("quantity", LongArgumentType.longArg(1))
+                                        .then(Commands.argument("price", StringArgumentType.word()).executes(this::bidCompany)))))
+                .then(Commands.literal("sell-company")
+                        .then(Commands.argument("company", StringArgumentType.word())
+                                .then(sellCompanyArguments())))
+                .then(Commands.literal("sell-company-to")
+                        .then(Commands.argument("bid", LongArgumentType.longArg(1))
+                                .then(Commands.argument("quantity", LongArgumentType.longArg(1)).executes(this::sellCompanyToBid))))
                 .build();
     }
 
@@ -351,6 +366,122 @@ public final class ShareCommands {
             svc.messages().send(player, "shares.dividend_paid", "company", company.name(), "total", d.total(), "per_share", d.perShare(),
                     "recipients", d.recipients());
         });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, Long> sellCompanyArguments() {
+        return Commands.argument("quantity", LongArgumentType.longArg(1))
+                .then(Commands.argument("price", StringArgumentType.word())
+                        .executes(c -> sellCompany(c, null))
+                        .then(Commands.argument("buyer", StringArgumentType.word())
+                                .suggests(CommandServices.onlinePlayerNames())
+                                .executes(c -> sellCompany(c, StringArgumentType.getString(c, "buyer")))));
+    }
+
+    private int holdings(CommandContext<CommandSourceStack> c) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        Long selected = selected(uuid);
+        svc.tasks().run(player, () -> {
+            long companyId = ownedCompany(uuid, selected);
+            Company company = svc.core().companies().find(companyId).orElseThrow();
+            return new Object[]{company, svc.core().shares().companyPortfolio(companyId)};
+        }, result -> {
+            Company company = (Company) result[0];
+            @SuppressWarnings("unchecked")
+            List<ShareService.Position> positions = (List<ShareService.Position>) result[1];
+            if (positions.isEmpty()) {
+                svc.messages().send(player, "shares.holdings.empty", "company", company.name());
+                return;
+            }
+            svc.messages().send(player, "shares.holdings.header", "company", company.name());
+            for (ShareService.Position p : positions) {
+                svc.messages().send(player, "shares.portfolio.entry", "company", p.companyName(), "id", p.companyId(),
+                        "quantity", p.total(), "listed", p.listed());
+            }
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int buyCompany(CommandContext<CommandSourceStack> c) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        long offerId = LongArgumentType.getLong(c, "offer");
+        long quantity = LongArgumentType.getLong(c, "quantity");
+        Long selected = selected(uuid);
+        svc.tasks().run(player, () -> svc.core().shares().buyForCompany(uuid, ownedCompany(uuid, selected), offerId, quantity),
+                trade -> svc.messages().send(player, "shares.bought_company", "quantity", trade.quantity(), "total", trade.total(),
+                        "id", offerId));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int bidCompany(CommandContext<CommandSourceStack> c) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        String ref = StringArgumentType.getString(c, "company");
+        long quantity = LongArgumentType.getLong(c, "quantity");
+        String priceInput = StringArgumentType.getString(c, "price");
+        Long selected = selected(uuid);
+        svc.tasks().run(player, () -> svc.core().shares().bidForCompany(uuid, ownedCompany(uuid, selected),
+                        svc.core().companies().requireByRef(ref).id(), quantity, Money.parsePositive(priceInput),
+                        svc.core().shares().config().maxOfferHours()),
+                bid -> svc.messages().send(player, "shares.bid_placed", "id", bid.id(), "quantity", bid.remaining(),
+                        "company", bid.companyName(), "price", bid.pricePerShare(),
+                        "total", bid.pricePerShare().times(bid.remaining())));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int sellCompany(CommandContext<CommandSourceStack> c, String buyerName) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        String ref = StringArgumentType.getString(c, "company");
+        long quantity = LongArgumentType.getLong(c, "quantity");
+        String priceInput = StringArgumentType.getString(c, "price");
+        Long selected = selected(uuid);
+        svc.tasks().run(player, () -> {
+            Money price = Money.parsePositive(priceInput);
+            long targetId = svc.core().companies().requireByRef(ref).id();
+            UUID buyer = buyerName == null ? null : svc.core().players().requireByName(buyerName).uuid();
+            return svc.core().shares().offerFromCompany(uuid, ownedCompany(uuid, selected), targetId, quantity, price, buyer,
+                    svc.core().shares().config().maxOfferHours());
+        }, offer -> {
+            svc.messages().send(player, "shares.offered", "id", offer.id(), "quantity", offer.remaining(), "company", offer.companyName(),
+                    "price", offer.pricePerShare());
+            if (offer.buyer() != null) {
+                Player online = Bukkit.getPlayer(offer.buyer());
+                if (online != null) {
+                    svc.messages().send(online, "shares.offer_notice", "seller", player.getName(), "quantity", offer.remaining(),
+                            "company", offer.companyName(), "price", offer.pricePerShare(), "id", offer.id());
+                }
+            }
+        });
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int sellCompanyToBid(CommandContext<CommandSourceStack> c) {
+        Player player = svc.requirePlayer(c.getSource());
+        if (player == null) {
+            return Command.SINGLE_SUCCESS;
+        }
+        UUID uuid = player.getUniqueId();
+        long bidId = LongArgumentType.getLong(c, "bid");
+        long quantity = LongArgumentType.getLong(c, "quantity");
+        Long selected = selected(uuid);
+        svc.tasks().run(player, () -> svc.core().shares().sellToBidFromCompany(uuid, ownedCompany(uuid, selected), bidId, quantity),
+                trade -> svc.messages().send(player, "shares.sold", "quantity", trade.quantity(), "total", trade.total(),
+                        "fee", trade.fee(), "id", bidId));
         return Command.SINGLE_SUCCESS;
     }
 }

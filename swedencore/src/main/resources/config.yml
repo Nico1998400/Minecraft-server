@@ -80,6 +80,10 @@ shares:
   fee-percent: 1
   max-offer-hours: 336
   max-open-offers: 10
+  # When a company that has outside shareholders buys or sells another company's shares, the price per share cannot
+  # exceed this multiple of the target's book value (buy) or fall below book / multiple (sell). Wholly-owned companies
+  # are unrestricted — the owner could withdraw the cash and trade personally anyway.
+  max-investment-book-multiple: 3
 
 renting:
   min-period-hours: 24

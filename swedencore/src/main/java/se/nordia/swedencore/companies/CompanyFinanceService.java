@@ -33,8 +33,8 @@ public final class CompanyFinanceService {
                                   Money operatingResult, Money financingIn, Money financingOut) {
     }
 
-    public record BalanceSheet(Money cash, Money properties, Money receivables, Money debt, Money wageArrears, Money equity,
-                               int employees) {
+    public record BalanceSheet(Money cash, Money properties, Money receivables, Money investments, Money debt, Money wageArrears,
+                               Money equity, int employees) {
     }
 
     public record Report(Company company, IncomeStatement income, BalanceSheet balance) {
@@ -125,7 +125,69 @@ public final class CompanyFinanceService {
                 WHERE borrower_type = 'COMPANY' AND borrower_id = ? AND status IN ('ACTIVE', 'DEFAULTED')""", id));
         Money arrears = payroll.arrears(tx, companyId);
         int employees = (int) tx.queryLong("SELECT count(*) FROM company_employees WHERE company_id = ? AND ended_at IS NULL", companyId);
-        Money equity = cash.plus(propertyValue).plus(receivables).minus(debt).minus(arrears);
-        return new BalanceSheet(cash, propertyValue, receivables, debt, arrears, equity, employees);
+        Money investments = investmentBookValue(tx, companyId);
+        Money equity = cash.plus(propertyValue).plus(receivables).plus(investments).minus(debt).minus(arrears);
+        return new BalanceSheet(cash, propertyValue, receivables, investments, debt, arrears, equity, employees);
+    }
+
+    /**
+     * Holdings of other companies, valued at the target's operating book (cash, property, receivables minus debts)
+     * times the stake. Nested investments are not marked, so circular holdings cannot inflate the figure.
+     */
+    private Money investmentBookValue(Tx tx, long companyId) throws SQLException {
+        String id = Long.toString(companyId);
+        long ore = 0;
+        for (var row : tx.queryList("""
+                        SELECT company_id, SUM(qty) FROM (
+                            SELECT company_id, quantity AS qty FROM share_holdings
+                            WHERE holder_type = 'COMPANY' AND holder_id = ?
+                            UNION ALL
+                            SELECT company_id, remaining FROM share_offers
+                            WHERE status = 'OPEN' AND seller_type = 'COMPANY' AND seller_id = ?) u
+                        GROUP BY company_id""",
+                rs -> new long[]{rs.getLong(1), rs.getLong(2)}, id, id)) {
+            long targetId = row[0];
+            long qty = row[1];
+            if (qty < 1) {
+                continue;
+            }
+            long outstanding = outstandingShares(tx, targetId);
+            if (outstanding < 1) {
+                continue;
+            }
+            long operating = operatingEquityOre(tx, targetId);
+            if (operating < 1) {
+                continue;
+            }
+            ore = Math.addExact(ore, Math.multiplyExact(operating, qty) / outstanding);
+        }
+        return Money.ofOre(ore);
+    }
+
+    private long outstandingShares(Tx tx, long companyId) throws SQLException {
+        long total = tx.queryLong("""
+                SELECT COALESCE((SELECT SUM(quantity) FROM share_holdings WHERE company_id = ?), 0)
+                     + COALESCE((SELECT SUM(remaining) FROM share_offers WHERE company_id = ? AND status = 'OPEN'), 0)""",
+                companyId, companyId);
+        long treasury = tx.queryLong("""
+                SELECT COALESCE((SELECT quantity FROM share_holdings WHERE company_id = ? AND holder_type = 'TREASURY'), 0)
+                     + COALESCE((SELECT SUM(remaining) FROM share_offers WHERE company_id = ? AND seller_type = 'TREASURY' AND status = 'OPEN'), 0)""",
+                companyId, companyId);
+        return total - treasury;
+    }
+
+    private long operatingEquityOre(Tx tx, long companyId) throws SQLException {
+        String id = Long.toString(companyId);
+        long cash = economy.findAccount(tx, AccountOwner.company(companyId), Account.MAIN).map(a -> a.balance().ore()).orElse(0L);
+        long properties = tx.queryLong(
+                "SELECT COALESCE(SUM(market_value), 0) FROM properties WHERE owner_type = 'COMPANY' AND owner_id = ?", id);
+        long receivables = tx.queryLong("""
+                SELECT COALESCE(SUM(total_repayment - repaid), 0) FROM loans
+                WHERE lender_type = 'COMPANY' AND lender_id = ? AND status IN ('ACTIVE', 'DEFAULTED')""", id);
+        long debt = tx.queryLong("""
+                SELECT COALESCE(SUM(total_repayment - repaid), 0) FROM loans
+                WHERE borrower_type = 'COMPANY' AND borrower_id = ? AND status IN ('ACTIVE', 'DEFAULTED')""", id);
+        long arrears = payroll.arrears(tx, companyId).ore();
+        return cash + properties + receivables - debt - arrears;
     }
 }
