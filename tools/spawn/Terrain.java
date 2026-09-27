@@ -36,9 +36,6 @@ final class Terrain {
     record Corridor(int u0, int u1, int vFrom, int vTo, int[] heights) {}
 
     static final List<Corridor> CORRIDORS = new ArrayList<>();
-    static final List<int[]> RIVER_PATH = List.of(new int[] {42, 92}, new int[] {40, 80}, new int[] {38, 71},
-            new int[] {36, 64}, new int[] {33, 52}, new int[] {29, 40}, new int[] {26, 28}, new int[] {22, 16},
-            new int[] {18, 5}, new int[] {15, -6});
 
     // ------------------------------------------------------------------ noise
 
@@ -182,6 +179,7 @@ final class Terrain {
             for (int v = Canvas.MINZ; v <= Canvas.MAXZ; v++) design[u - Canvas.MINX][v - Canvas.MINZ] = designHeight(u, v);
         cutStreets(design);
         corridors(design);
+        Wild.shape(design);
         for (int u = Canvas.MINX; u <= Canvas.MAXX; u++)
             for (int v = Canvas.MINZ; v <= Canvas.MAXZ; v++) {
                 int edge = Math.min(Math.min(u - Canvas.MINX, Canvas.MAXX - u), Math.min(v - Canvas.MINZ, Canvas.MAXZ - v));
@@ -193,11 +191,27 @@ final class Terrain {
         for (Corridor c : CORRIDORS)
             for (int u = c.u0(); u <= c.u1(); u++)
                 for (int v = c.vFrom(); v <= c.vTo(); v++) H[u - Canvas.MINX][v - Canvas.MINZ] = c.heights()[v - c.vFrom()];
-        for (int u = Canvas.MINX; u <= Canvas.MAXX; u++)
-            for (int v = Canvas.MINZ; v <= Canvas.MAXZ; v++)
-                if (riverDist(u, v) <= 2.3 && !inBasin(u, v) && h(u, v) > Canvas.SEA) RIVER[u - Canvas.MINX][v - Canvas.MINZ] = true;
+        Wild.erode(H);
+        rivers();
         classify();
         paint();
+        Wild.detail();
+        River.fill();
+    }
+
+    /** The river from the spring under the world tree down through the town, and a brook from the eastern fields. */
+    static void rivers() {
+        List<double[]> main = List.of(new double[] {42, 92}, new double[] {44, 84}, new double[] {43, 76}, new double[] {40, 68},
+                new double[] {38, 60}, new double[] {34, 51}, new double[] {29, 41}, new double[] {27, 31}, new double[] {23, 21},
+                new double[] {20, 11}, new double[] {16, 1}, new double[] {12, -9});
+        River.carve(main, 3, 6, 3, Canvas.SEA);
+        int spring = River.levelAt(42, 92);
+        if (spring != River.NONE) River.pond(42, 92, 5, spring, 3);
+        int join = River.levelAt(34, 51);
+        if (join == River.NONE) join = River.levelAt(35, 51);
+        List<double[]> brook = List.of(new double[] {76, 62}, new double[] {66, 58}, new double[] {56, 57}, new double[] {46, 53},
+                new double[] {36, 51});
+        River.carve(brook, 2, 3, 11, join);
     }
 
     static void basinDistance() {
@@ -306,12 +320,6 @@ final class Terrain {
         return Math.hypot(px - (a[0] + t * dx), pz - (a[1] + t * dz));
     }
 
-    static double riverDist(int u, int v) {
-        double m = Double.MAX_VALUE;
-        for (int i = 0; i + 1 < RIVER_PATH.size(); i++) m = Math.min(m, distToSegment(u, v, RIVER_PATH.get(i), RIVER_PATH.get(i + 1)));
-        return m;
-    }
-
     static int h(int u, int v) {
         if (!Canvas.inXZ(u, v)) return -12;
         return H[u - Canvas.MINX][v - Canvas.MINZ];
@@ -349,7 +357,7 @@ final class Terrain {
     }
 
     static String masonry() {
-        double r = Canvas.rnd();
+        double r = Canvas.TERRAIN_RNG.nextDouble();
         if (r < 0.40) return "stone_bricks";
         if (r < 0.56) return "mossy_stone_bricks";
         if (r < 0.66) return "cracked_stone_bricks";
@@ -360,7 +368,7 @@ final class Terrain {
     }
 
     static String rock(int y) {
-        double r = Canvas.rnd();
+        double r = Canvas.TERRAIN_RNG.nextDouble();
         if (r < 0.38) return "stone";
         if (r < 0.58) return "andesite";
         if (r < 0.70) return "tuff";
@@ -376,6 +384,10 @@ final class Terrain {
                 int top = h(u, v);
                 int iu = u - Canvas.MINX, iv = v - Canvas.MINZ;
                 boolean water = top < Canvas.SEA;
+                if (Wild.isWild(u, v) && !RIVER[iu][iv]) {
+                    Wild.paint(u, v);
+                    continue;
+                }
                 Canvas.fill(u, Canvas.MINY, v, u, top - 4, v, "stone");
                 if (WALL[iu][iv]) {
                     int low = top;
@@ -385,14 +397,14 @@ final class Terrain {
                     int low = top;
                     for (B.Dir d : B.Dir.values()) low = Math.min(low, h(u + d.dx, v + d.dz));
                     for (int y = Math.min(low - 1, top - 3); y <= top; y++) Canvas.set(u, y, v, rock(y));
-                    if (top > Canvas.SEA && Canvas.rnd() < 0.3) Canvas.set(u, top, v, Canvas.rnd() < 0.5 ? "mossy_cobblestone" : "moss_block");
+                    if (top > Canvas.SEA && Canvas.TERRAIN_RNG.nextDouble() < 0.3) Canvas.set(u, top, v, Canvas.TERRAIN_RNG.nextDouble() < 0.5 ? "mossy_cobblestone" : "moss_block");
                 } else if (water) {
                     Canvas.fill(u, top - 3, v, u, top - 1, v, "stone");
-                    double r = Canvas.rnd();
+                    double r = Canvas.TERRAIN_RNG.nextDouble();
                     Canvas.set(u, top, v, r < 0.6 ? "sand" : r < 0.85 ? "gravel" : "clay");
                 } else if (top <= Canvas.SEA + 1 && nearWater(u, v, 2)) {
                     Canvas.fill(u, top - 3, v, u, top, v, "sand");
-                    if (Canvas.rnd() < 0.2) Canvas.set(u, top, v, "gravel");
+                    if (Canvas.TERRAIN_RNG.nextDouble() < 0.2) Canvas.set(u, top, v, "gravel");
                 } else {
                     Canvas.fill(u, top - 3, v, u, top - 1, v, "dirt");
                     double r = fbm(u, v, 7, 31);
@@ -400,11 +412,10 @@ final class Terrain {
                 }
                 if (water) {
                     Canvas.fill(u, top + 1, v, u, Canvas.SEA, v, "water");
-                    if (top < Canvas.SEA - 2 && Canvas.rnd() < 0.07) Canvas.set(u, top + 1, v, "seagrass");
+                    if (top < Canvas.SEA - 2 && Canvas.TERRAIN_RNG.nextDouble() < 0.07) Canvas.set(u, top + 1, v, "seagrass");
                 }
                 Canvas.setGround(u, v, water ? Canvas.SEA : top);
             }
-        river();
     }
 
     static boolean nearWater(int u, int v, int r) {
@@ -413,43 +424,4 @@ final class Terrain {
         return false;
     }
 
-    /** Channel: water two deep, one block below the ground; drops in the terrain become cascades. */
-    static void river() {
-        for (int u = Canvas.MINX; u <= Canvas.MAXX; u++)
-            for (int v = Canvas.MINZ; v <= Canvas.MAXZ; v++) {
-                if (!RIVER[u - Canvas.MINX][v - Canvas.MINZ]) continue;
-                int top = h(u, v);
-                Canvas.set(u, top, v, "air");
-                Canvas.set(u, top - 1, v, "water");
-                Canvas.set(u, top - 2, v, "water");
-                Canvas.set(u, top - 3, v, Canvas.rnd() < 0.5 ? "gravel" : "mossy_cobblestone");
-                if (Canvas.rnd() < 0.06) Canvas.set(u, top - 2, v, "seagrass");
-                Canvas.setGround(u, v, top - 3);
-                for (B.Dir d : B.Dir.values()) {
-                    int nu = u + d.dx, nv = v + d.dz;
-                    if (!Canvas.inXZ(nu, nv) || RIVER[nu - Canvas.MINX][nv - Canvas.MINZ] || inBasin(nu, nv)) continue;
-                    for (int y = top - 3; y <= top - 1; y++) if (!Canvas.isSolid(nu, y, nv)) Canvas.set(nu, y, nv, masonry());
-                    if (h(nu, nv) >= top && Canvas.rnd() < 0.6) Canvas.set(nu, h(nu, nv), nv, Canvas.rnd() < 0.5 ? "mossy_cobblestone" : "mossy_stone_bricks");
-                }
-            }
-        int[] s = RIVER_PATH.get(0);
-        int top = h(s[0], s[1]);
-        for (int du = -6; du <= 6; du++)
-            for (int dv = -6; dv <= 6; dv++) {
-                double d = Math.hypot(du, dv);
-                if (d > 6.2) continue;
-                int u = s[0] + du, v = s[1] + dv;
-                if (d < 4.8) {
-                    Canvas.set(u, top, v, "air");
-                    Canvas.set(u, top - 1, v, "water");
-                    Canvas.set(u, top - 2, v, "water");
-                    Canvas.set(u, top - 3, v, "gravel");
-                    RIVER[u - Canvas.MINX][v - Canvas.MINZ] = true;
-                    Canvas.setGround(u, v, top - 3);
-                } else {
-                    for (int y = top - 3; y <= top - 1; y++) Canvas.set(u, y, v, "mossy_cobblestone");
-                    Canvas.set(u, top, v, Canvas.rnd() < 0.5 ? "mossy_cobblestone" : "moss_block");
-                }
-            }
-    }
 }

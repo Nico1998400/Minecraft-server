@@ -54,7 +54,7 @@ final class Nature {
     }
 
     static boolean spruce(int u, int v, int g, int h) {
-        if (!airColumn(u, v, g + 1, g + h + 1, 1)) return false;
+        if (!airColumn(u, v, g + 1, g + h + 1, 0)) return false;
         for (int y = g + 1; y < g + h; y++) Canvas.set(u, y, v, "spruce_log[axis=y]");
         for (int y = g + 3; y <= g + h; y++) {
             int k = g + h - y;
@@ -73,7 +73,7 @@ final class Nature {
 
     static boolean bigSpruce(int u, int v, int g) {
         int h = 18 + Canvas.rint(9);
-        if (!airColumn(u, v, g + 1, g + h, 2)) return false;
+        if (!airColumn(u, v, g + 1, g + h, 0) || !airColumn(u, v, g + 6, g + h, 1)) return false;
         for (int y = g - 1; y < g + h; y++)
             for (int du = 0; du <= 1; du++) for (int dv = 0; dv <= 1; dv++) Canvas.set(u + du, y, v + dv, "spruce_log[axis=y]");
         for (int y = g + 5; y <= g + h + 1; y++) {
@@ -92,7 +92,7 @@ final class Nature {
     }
 
     static boolean birch(int u, int v, int g, int h) {
-        if (!airColumn(u, v, g + 1, g + h + 1, 2)) return false;
+        if (!airColumn(u, v, g + 1, g + h + 1, 0)) return false;
         for (int y = g + 1; y < g + h; y++) Canvas.set(u, y, v, "birch_log[axis=y]");
         for (int du = -3; du <= 3; du++)
             for (int dy = -2; dy <= 2; dy++)
@@ -105,7 +105,7 @@ final class Nature {
     }
 
     static boolean oak(int u, int v, int g, int h) {
-        if (!airColumn(u, v, g + 1, g + h + 2, 2)) return false;
+        if (!airColumn(u, v, g + 1, g + h + 2, 0)) return false;
         for (int y = g + 1; y < g + h; y++) Canvas.set(u, y, v, "oak_log[axis=y]");
         for (int k = 0; k < 3; k++) {
             int bu = u + Canvas.rint(5) - 2, bv = v + Canvas.rint(5) - 2, by = g + h - 1 + Canvas.rint(2);

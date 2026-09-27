@@ -39,7 +39,14 @@ final class Town {
     static void pave(int u, int v, String state) {
         int g = Terrain.h(u, v);
         if (g < Canvas.SEA || Terrain.inBasin(u, v)) return;
-        Canvas.set(u, g, v, river(u, v) ? "stone_bricks" : state);
+        if (river(u, v)) {
+            // bridge deck at street level over the channel, with an arched underside
+            int i = u - Canvas.MINX, j = v - Canvas.MINZ;
+            int deck = Math.max(River.BEFORE[i][j], River.LEVEL[i][j] + 2);
+            Canvas.set(u, deck, v, "stone_bricks");
+            Canvas.set(u, deck - 1, v, "stone_brick_slab[type=top]");
+            Canvas.setGround(u, v, deck);
+        } else Canvas.set(u, g, v, state);
         Canvas.STREET[u - Canvas.MINX][v - Canvas.MINZ] = true;
         Canvas.use(u, v, u, v);
     }

@@ -41,7 +41,7 @@ final class B {
             "pink_petals", "wildflowers", "leaf_litter", "seagrass", "tall_seagrass", "dandelion", "poppy", "blue_orchid",
             "allium", "azure_bluet", "red_tulip", "orange_tulip", "white_tulip", "pink_tulip", "oxeye_daisy", "cornflower",
             "lily_of_the_valley", "sweet_berry_bush", "lilac", "rose_bush", "peony", "sunflower", "kelp", "kelp_plant",
-            "sea_pickle", "lily_pad", "moss_carpet", "brown_mushroom", "red_mushroom", "cave_vines", "cave_vines_plant",
+            "sea_pickle", "lily_pad", "moss_carpet", "short_dry_grass", "tall_dry_grass", "brown_mushroom", "red_mushroom", "cave_vines", "cave_vines_plant",
             "vine", "glow_lichen", "hanging_roots", "spore_blossom", "dead_bush", "torchflower");
 
     static boolean isPlant(String b) {

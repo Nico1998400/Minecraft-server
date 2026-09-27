@@ -197,7 +197,9 @@ final class Render {
 
     // ------------------------------------------------------------------ context (the real world around the canvas)
 
-    static final int CTX = 200;
+    static int CTX = 200;
+    /** When set, the canvas is ignored and everything is read from the world (renders what was actually built). */
+    static boolean WORLD_ONLY = false;
     static final java.util.concurrent.ConcurrentHashMap<String, Mat> CTX_MATS = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** Loads every chunk the renderer may read, so later parallel reads never modify the reader cache. */
@@ -236,6 +238,7 @@ final class Render {
     record Hit(double t, int nx, int ny, int nz, int x, int y, int z, Mat m) {}
 
     static Mat cell(int x, int y, int z) {
+        if (WORLD_ONLY) return y < -40 || y > 200 ? null : ctxMat(x, y, z);
         if (Canvas.in(x, y, z)) {
             Mat m = MATS[Canvas.VOX[Canvas.idx(x, y, z)]];
             return m.invisible ? null : m;
@@ -259,8 +262,9 @@ final class Render {
         double t = 0;
         int nx = 0, ny = 0, nz = 0;
         while (t < maxT) {
-            if (y < Canvas.MINY - 30 || y > Canvas.MAXY + 2 && dy > 0) return null;
-            if (y <= Canvas.MAXY + 2) {
+            int top = WORLD_ONLY ? 200 : Canvas.MAXY + 2;
+            if (y < Canvas.MINY - 30 || y > top && dy > 0) return null;
+            if (y <= top) {
                 Mat m = cell(x, y, z);
                 if (m != null && !(ignoreGlass && (m.glass || m.base.endsWith("pane")))) {
                     if (m.water) {

@@ -18,7 +18,7 @@ import java.util.stream.Stream;
  */
 final class Canvas {
 
-    static final int MINX = -128, MAXX = 127, MINZ = -128, MAXZ = 127, MINY = -30, MAXY = 112;
+    static final int MINX = Box.minX, MAXX = Box.maxX, MINZ = Box.minZ, MAXZ = Box.maxZ, MINY = Box.minY, MAXY = Box.maxY;
     static final int SX = MAXX - MINX + 1, SY = MAXY - MINY + 1, SZ = MAXZ - MINZ + 1;
     static final int SEA = -2; // top water block
 
@@ -32,6 +32,8 @@ final class Canvas {
     static final boolean[][] USED = new boolean[SX][SZ];
     static final boolean[][] STREET = new boolean[SX][SZ];
     static final Random RNG = new Random(793);
+    /** Separate stream for the landscape, so changes to it never reshuffle the town. */
+    static final Random TERRAIN_RNG = new Random(4217);
 
     static {
         id("air");
@@ -201,22 +203,36 @@ final class Canvas {
 
     // ------------------------------------------------------------------ data pack
 
+    static String TAG = "nordia_" + Box.name;
+
+    /** Force-load lines for the whole box in bands that stay under the 256-chunk limit per command. */
+    static List<String> forceload(String prefix, String op) {
+        List<String> out = new ArrayList<>();
+        for (int z0 = MINZ; z0 <= MAXZ; z0 += 128) {
+            int z1 = Math.min(MAXZ, z0 + 127);
+            out.add(prefix + "forceload " + op + " ~" + MINX + " ~" + z0 + " ~" + MAXX + " ~" + z1);
+        }
+        return out;
+    }
+
     static void writeDatapack(Path root, List<Cmd> cmds, int spawnX, int spawnY, int spawnZ) throws IOException {
         if (Files.exists(root)) try (Stream<Path> walk = Files.walk(root)) {
             for (Path p : walk.sorted(Comparator.reverseOrder()).toList()) Files.delete(p);
         }
-        Path fn = root.resolve("data/nordia/function/spawn");
+        String ns = "nordia:" + Box.name + "/";
+        String marker = TAG + "_origin";
+        Path fn = root.resolve("data/nordia/function/" + Box.name);
         Files.createDirectories(fn);
         write(root.resolve("pack.mcmeta"), """
                 {
                   "pack": {
-                    "description": "NORDIA — Nordhamn spawn town",
+                    "description": "NORDIA — Nordhamn (%s)",
                     "pack_format": 107,
                     "min_format": [107, 0],
                     "max_format": [107, 1]
                   }
                 }
-                """);
+                """.formatted(Box.name));
         List<List<Cmd>> parts = new ArrayList<>();
         List<Cmd> current = new ArrayList<>();
         long volume = 0;
@@ -230,41 +246,43 @@ final class Canvas {
             volume += c.volume();
         }
         if (!current.isEmpty()) parts.add(current);
-        String at = "execute at @e[type=marker,tag=nordia_spawn_origin,limit=1] run ";
-        String area = "~" + MINX + " ~" + MINZ + " ~" + MAXX + " ~" + MAXZ;
-        write(fn.resolve("build.mcfunction"), String.join("\n",
-                "# Builds Nordhamn centred on the execution position (y = world 64).",
-                "# Usage: /execute positioned <x> 64 <z> run function nordia:spawn/build",
-                "kill @e[type=marker,tag=nordia_spawn_origin]",
-                "execute align xyz run forceload add ~" + MINX + " ~" + MINZ + " ~" + MAXX + " ~-1",
-                "execute align xyz run forceload add ~" + MINX + " ~0 ~" + MAXX + " ~" + MAXZ,
-                "schedule function nordia:spawn/start 100t",
-                "execute align xyz run summon marker ~ ~ ~ {Tags:[\"nordia_spawn_origin\"]}",
-                "tellraw @a {\"text\":\"[NORDIA] Bygger Nordhamn — " + parts.size() + " steg...\",\"color\":\"gold\"}", ""));
+        String at = "execute at @e[type=marker,tag=" + marker + ",limit=1] run ";
+        List<String> build = new ArrayList<>(List.of(
+                "# Builds region '" + Box.name + "' with its origin at the execution position (y = world 64).",
+                "# Usage: /execute positioned " + Box.worldX + " 64 " + Box.worldZ + " run function " + ns + "build",
+                "kill @e[type=marker,tag=" + marker + "]"));
+        build.addAll(forceload("execute align xyz run ", "add"));
+        build.add("schedule function " + ns + "start 100t");
+        build.add("execute align xyz run summon marker ~ ~ ~ {Tags:[\"" + marker + "\"]}");
+        build.add("tellraw @a {\"text\":\"[NORDIA] Bygger " + Box.name + " — " + parts.size() + " steg...\",\"color\":\"gold\"}");
+        build.add("");
+        write(fn.resolve("build.mcfunction"), String.join("\n", build));
         write(fn.resolve("start.mcfunction"), String.join("\n",
-                "execute unless entity @e[type=marker,tag=nordia_spawn_origin] run tellraw @a {\"text\":\"[NORDIA] Markören saknas — kör build igen när området är laddat\",\"color\":\"red\"}",
-                "execute if entity @e[type=marker,tag=nordia_spawn_origin] run function nordia:spawn/stage_0", ""));
+                "execute unless entity @e[type=marker,tag=" + marker + "] run tellraw @a {\"text\":\"[NORDIA] Markören saknas — kör build igen när området är laddat\",\"color\":\"red\"}",
+                "execute if entity @e[type=marker,tag=" + marker + "] run function " + ns + "stage_0", ""));
         for (int k = 0; k < parts.size(); k++) {
             StringBuilder sb = new StringBuilder();
             for (Cmd c : parts.get(k)) sb.append(c.text()).append('\n');
             write(fn.resolve("part_" + k + ".mcfunction"), sb.toString());
             String next = k + 1 < parts.size() ? "stage_" + (k + 1) : "entities";
             write(fn.resolve("stage_" + k + ".mcfunction"), String.join("\n",
-                    at + "function nordia:spawn/part_" + k,
-                    "title @a actionbar {\"text\":\"Bygger Nordhamn " + (k + 1) + "/" + parts.size() + "\",\"color\":\"gold\"}",
-                    "schedule function nordia:spawn/" + next + " 3t", ""));
+                    at + "function " + ns + "part_" + k,
+                    "title @a actionbar {\"text\":\"Bygger " + Box.name + " " + (k + 1) + "/" + parts.size() + "\",\"color\":\"gold\"}",
+                    "schedule function " + ns + next + " 3t", ""));
         }
+        int reach = Math.max(Math.max(-MINX, MAXX), Math.max(-MINZ, MAXZ)) + 20;
         StringBuilder ents = new StringBuilder();
-        ents.append(at).append("kill @e[tag=nordia_spawn,distance=..200]\n");
+        ents.append(at).append("kill @e[tag=").append(TAG).append(",distance=..").append(reach * 3 / 2).append("]\n");
         for (String e : ENTITIES) ents.append(at).append(e).append('\n');
-        ents.append("schedule function nordia:spawn/finish 2t\n");
+        ents.append("schedule function ").append(ns).append("finish 2t\n");
         write(fn.resolve("entities.mcfunction"), ents.toString());
-        write(fn.resolve("finish.mcfunction"), String.join("\n",
-                at + "setworldspawn ~" + spawnX + " ~" + spawnY + " ~" + spawnZ,
-                at + "forceload remove ~" + MINX + " ~" + MINZ + " ~" + MAXX + " ~-1",
-                at + "forceload remove ~" + MINX + " ~0 ~" + MAXX + " ~" + MAXZ,
-                "kill @e[type=marker,tag=nordia_spawn_origin]",
-                "tellraw @a {\"text\":\"[NORDIA] Nordhamn är klart!\",\"color\":\"green\"}", ""));
+        List<String> finish = new ArrayList<>();
+        if (spawnY != Integer.MIN_VALUE) finish.add(at + "setworldspawn ~" + spawnX + " ~" + spawnY + " ~" + spawnZ);
+        finish.addAll(forceload(at, "remove"));
+        finish.add("kill @e[type=marker,tag=" + marker + "]");
+        finish.add("tellraw @a {\"text\":\"[NORDIA] " + Box.name + " är klart!\",\"color\":\"green\"}");
+        finish.add("");
+        write(fn.resolve("finish.mcfunction"), String.join("\n", finish));
         System.out.printf("datapack: %d commands in %d parts, %d entities -> %s%n", cmds.size(), parts.size(),
                 ENTITIES.size(), root);
     }
