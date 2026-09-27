@@ -1,6 +1,6 @@
 # Development Status
 
-_Last updated: 2026-09-16_
+_Last updated: 2026-09-27_
 
 ## Current phase
 **P0, P1, P2 complete (MVP). P3 feature-complete:** market statistics, loans, bankruptcy, company finance, renting,
@@ -76,13 +76,29 @@ done. Remaining: stock market / exchange (#43).
       target's operating book (no nested mark-to-market).
 - [x] 203 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
+### Player experience — spawn and onboarding (in progress, started 2026-09-27)
+- [x] Spawn town **Nordhamn** (`tools/spawn/`, see its README): generated vanilla data pack, Nordic harbour town on an
+      island; players arrive on a ship's deck. Built and verified in the dev world (centre `-584 64 300`; 3 508 sampled
+      blocks matched, 36 entities). Old dev world kept as `swedencore/run/world_backup_2026-09-27`.
+- Decisions (agreed with the owner):
+  - Both GUI and commands: a main menu (`/meny` + a "NORDIA pass" item in the last hotbar slot) calls the same services
+    as the commands; commands stay for experienced players.
+  - First join: arrival on the ship → welcome title → customs officer NPC (language choice, hands out the pass) →
+    "First steps" checklist (find a job → take a contract → sell something → leave town), each step pointing at a
+    spawn building. **Rewards are reputation or items, never money** (no new mint source).
+  - Spawn buildings map to systems: town hall = properties, job centre = jobs/contracts, bank = loans/shares,
+    warehouse = logistics, market stalls = rentable player shops (not an auction house).
+
 ## Next steps (exact)
-1. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-2. Smoke-test V16 and V17 on the dev Paper server (share bids and company investments: domain tests pass, not yet loaded
+1. **Main menu GUI** (`/meny`, NORDIA pass item) → then first-join onboarding (see decisions above) → spawn protection
+   for the Nordhamn area in the plugin (currently only vanilla `spawn-protection=16`) and making the market stalls
+   rentable server-owned properties.
+2. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
+3. Smoke-test V16 and V17 on the dev Paper server (share bids and company investments: domain tests pass, not yet loaded
    on the real server).
-3. GUI menus for common flows (job board, company management) — optional polish.
-4. P4 #43 stock market / exchange — only if playtests show peer-to-peer offers and bids are not enough.
-5. Then P5 planning (society: crime, police, government) — only after a playtest confirms P0–P2 work in-game.
+4. GUI menus for common flows (job board, company management) — optional polish.
+5. P4 #43 stock market / exchange — only if playtests show peer-to-peer offers and bids are not enough.
+6. Then P5 planning (society: crime, police, government) — only after a playtest confirms P0–P2 work in-game.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.
