@@ -77,9 +77,12 @@ done. Remaining: stock market / exchange (#43).
 - [x] 203 tests (domain, concurrency, exploits, localization completeness, architecture rules)
 
 ### Player experience — spawn and onboarding (in progress, started 2026-09-27)
-- [x] Spawn town **Nordhamn** (`tools/spawn/`, see its README): generated vanilla data pack, Nordic harbour town on an
-      island; players arrive on a ship's deck. Built and verified in the dev world (centre `-584 64 300`; 3 508 sampled
-      blocks matched, 36 entities). Old dev world kept as `swedencore/run/world_backup_2026-09-27`.
+- [x] Spawn town **Nordhamn 2.0** (`tools/spawn/`): Viking-age harbour town generated from a voxel model into a data
+      pack. Organic slope with contour streets and a grand stair, round harbour basin, two 31-block stone guardians at
+      the mouth, king's hall + world tree on the plateau, stave church, stilt quarter, longships, boathouses, beacon,
+      palisade and watchtowers. Built in the dev world 2026-09-27 (centre `-572 64 378`, spawn on the ship deck
+      `-577 65 369` facing the town); 99.2 % of 9 832 sampled blocks matched. Previews: `--renders all` (ray tracer).
+      Old dev world kept as `swedencore/run/world_backup_2026-09-27`.
 - Decisions (agreed with the owner):
   - Both GUI and commands: a main menu (`/meny` + a "NORDIA pass" item in the last hotbar slot) calls the same services
     as the commands; commands stay for experienced players.
@@ -90,15 +93,19 @@ done. Remaining: stock market / exchange (#43).
     warehouse = logistics, market stalls = rentable player shops (not an auction house).
 
 ## Next steps (exact)
-1. **Main menu GUI** (`/meny`, NORDIA pass item) → then first-join onboarding (see decisions above) → spawn protection
+1. **Nordhamn polish** (next session): the river spills water onto streets where it cascades (compare report:
+   ~3 300 spilled cells; seal channel banks / step the channel); cave vines fixed in the generator but not rebuilt yet;
+   denser houses on the upper slopes; labels for key buildings; guardian faces. Rebuild = copy data pack + `/reload` +
+   `/execute positioned -572 64 378 run function nordia:spawn/build` (force-load the origin chunk first).
+2. **Main menu GUI** (`/meny`, NORDIA pass item) → then first-join onboarding (see decisions above) → spawn protection
    for the Nordhamn area in the plugin (currently only vanilla `spawn-protection=16`) and making the market stalls
    rentable server-owned properties.
-2. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
-3. Smoke-test V16 and V17 on the dev Paper server (share bids and company investments: domain tests pass, not yet loaded
+3. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
+4. Smoke-test V16 and V17 on the dev Paper server (share bids and company investments: domain tests pass, not yet loaded
    on the real server).
-4. GUI menus for common flows (job board, company management) — optional polish.
-5. P4 #43 stock market / exchange — only if playtests show peer-to-peer offers and bids are not enough.
-6. Then P5 planning (society: crime, police, government) — only after a playtest confirms P0–P2 work in-game.
+5. GUI menus for common flows (job board, company management) — optional polish.
+6. P4 #43 stock market / exchange — only if playtests show peer-to-peer offers and bids are not enough.
+7. Then P5 planning (society: crime, police, government) — only after a playtest confirms P0–P2 work in-game.
 
 ## Known issues / notes
 - Player names must match `[A-Za-z0-9_]{1,16}` (Java Edition). Bedrock/Floodgate prefixes are not supported yet.
