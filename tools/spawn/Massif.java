@@ -21,14 +21,16 @@ final class Massif {
         // main ridge, west to east: P3 (-130) – main peak P1 (-28) – pass – P2 (72) – P4 (170)
         ridge(-200, 232, 60, -130, 214, 112);
         ridge(-130, 214, 112, -78, 226, 88);
-        ridge(-78, 226, 88, -28, 240, 152);
-        ridge(-28, 240, 152, 22, 230, 84);
+        ridge(-78, 226, 88, -42, 236, 150);   // twin summit: west top
+        ridge(-42, 236, 150, -29, 239, 131);  // the notch
+        ridge(-29, 239, 131, -14, 243, 146);  // east top
+        ridge(-14, 243, 146, 22, 230, 84);
         ridge(22, 230, 84, 72, 214, 128);
         ridge(72, 214, 128, 122, 230, 90);
         ridge(122, 230, 90, 170, 244, 104);
         ridge(170, 244, 104, 205, 238, 60);
         // spurs reaching north towards the town
-        ridge(-28, 240, 146, -42, 196, 88);
+        ridge(-42, 236, 144, -42, 196, 88);
         ridge(-42, 196, 88, -58, 164, 36);
         ridge(72, 214, 122, 62, 186, 70);
         ridge(62, 186, 70, 48, 160, 30);
@@ -37,7 +39,7 @@ final class Massif {
         ridge(170, 244, 100, 152, 200, 52);
         ridge(152, 200, 52, 140, 164, 24);
         // southern spurs (seen as layered silhouettes from the peaks)
-        ridge(-28, 240, 140, -10, 320, 70);
+        ridge(-14, 243, 138, -10, 320, 70);
         ridge(72, 214, 120, 96, 300, 66);
         ridge(-130, 214, 104, -120, 310, 56);
         // a knoll that the path crosses to reach the gorge bridge
@@ -68,7 +70,13 @@ final class Massif {
         for (Ridge r : RIDGES) {
             double d = distSeg(wu, wv, r.a(), r.b(), t);
             double crest = r.ha() + (r.hb() - r.ha()) * t[0];
-            double half = crest * 1.05 + 10;
+            // gendarmes and notches along the crest
+            double along = t[0] * Math.hypot(r.b()[0] - r.a()[0], r.b()[1] - r.a()[1]) + r.ha();
+            crest += (Geology.ridged(along, r.hb(), 9, 3, 711) - 0.45) * 16 * Terrain.smooth(crest / 110);
+            // asymmetry: north faces are steep (glacier-cut), south faces long and gentle
+            double cross = (r.b()[0] - r.a()[0]) * (wv - r.a()[1]) - (r.b()[1] - r.a()[1]) * (wu - r.a()[0]);
+            double side = cross < 0 ? 0.78 : 1.3;
+            double half = (crest * 1.05 + 10) * side;
             if (d >= half) continue;
             double x = d / half;
             double profile = Math.pow(1 - x, 2.1);
@@ -157,6 +165,8 @@ final class Massif {
         Geology.cliffDetail(H, wild);
         caves();
         River.fill();
+        int farms = Fields.lay(-150, 130, 150, 190, 10, (u, v) -> Canvas.ground(u, v) < 46 && !blocked(u, v) && Terrain.WEIGHT[u - Canvas.MINX][v - Canvas.MINZ] > 0.35);
+        System.out.println("fields (valley): " + farms);
         features();
     }
 
@@ -258,7 +268,7 @@ final class Massif {
         bridge();
         viewpoint(-40, 212);
         shieling(22, 226);
-        beacon(-28, 240);
+        beacon(-42, 236);
     }
 
     /** Timber bridges wherever the path crosses a stream: deck at path level, posts to the bed, railings, lanterns. */

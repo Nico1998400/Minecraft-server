@@ -197,6 +197,9 @@ final class Terrain {
         paint();
         Wild.detail();
         River.fill();
+        int farms = Fields.lay(60, -14, 124, 70, 8, (u, v) -> (Wild.area(u, v) == Wild.Area.EAST || Wild.area(u, v) == Wild.Area.PLATEAU && u > 55) && Wild.wild(u, v) > 0.6
+                && !RIVER[u - Canvas.MINX][v - Canvas.MINZ] && !River.channel(u, v));
+        System.out.println("fields (town): " + farms);
     }
 
     /** The river from the spring under the world tree down through the town, and a brook from the eastern fields. */

@@ -93,10 +93,11 @@ done. Remaining: stock market / exchange (#43).
     warehouse = logistics, market stalls = rentable player shops (not an auction house).
 
 ## Next steps (exact)
-1. **Nordhamn polish** (next session): the river spills water onto streets where it cascades (compare report:
-   ~3 300 spilled cells; seal channel banks / step the channel); cave vines fixed in the generator but not rebuilt yet;
-   denser houses on the upper slopes; labels for key buildings; guardian faces. Rebuild = copy data pack + `/reload` +
-   `/execute positioned -572 64 378 run function nordia:spawn/build` (force-load the origin chunk first).
+1. **Nordhamn polish**: terrain pass done (2026-09-28): geology toolkit, river rebuilt (no spills by design: falls
+   of two or more blocks, raised banks), fields, and the **Nordfjället** massif south of the town (separate region
+   `--region massif`, data pack `nordia:massif/build`, same origin `-572 64 378`). Check the built result with
+   `--region view` (renders from the world files). Open: denser houses on the upper slopes, labels for key buildings,
+   guardian faces, more farmland in the valley. Dev server view-distance raised to 16 so the mountains show.
 2. **Main menu GUI** (`/meny`, NORDIA pass item) → then first-join onboarding (see decisions above) → spawn protection
    for the Nordhamn area in the plugin (currently only vanilla `spawn-protection=16`) and making the market stalls
    rentable server-owned properties.
