@@ -234,10 +234,11 @@ final class Canvas {
     /** Force-load lines for the whole box in bands that stay under the 256-chunk limit per command. */
     static List<String> forceload(String prefix, String op) {
         List<String> out = new ArrayList<>();
-        for (int z0 = MINZ; z0 <= MAXZ; z0 += 128) {
-            int z1 = Math.min(MAXZ, z0 + 127);
-            out.add(prefix + "forceload " + op + " ~" + MINX + " ~" + z0 + " ~" + MAXX + " ~" + z1);
-        }
+        for (int z0 = MINZ; z0 <= MAXZ; z0 += 128)
+            for (int x0 = MINX; x0 <= MAXX; x0 += 128) {
+                int z1 = Math.min(MAXZ, z0 + 127), x1 = Math.min(MAXX, x0 + 127);
+                out.add(prefix + "forceload " + op + " ~" + x0 + " ~" + z0 + " ~" + x1 + " ~" + z1);
+            }
         return out;
     }
 

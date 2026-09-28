@@ -91,6 +91,43 @@ final class Nature {
         return true;
     }
 
+    /**
+     * The tree of the old spawn: a thick spruce-wood trunk with root flares, two or three limbs, and a broad crown of
+     * oak leaves with a little flowering azalea.
+     */
+    static boolean spawnTree(int u, int v, int g, java.util.Random r) {
+        int h = 6 + r.nextInt(4);
+        if (!airColumn(u, v, g + 1, g + h + 3, 0)) return false;
+        for (int y = g; y < g + h; y++) Canvas.set(u, y, v, "spruce_wood");
+        for (B.Dir d : B.Dir.values()) if (r.nextDouble() < 0.7) Canvas.setIfAir(u + d.dx, g + 1, v + d.dz, "spruce_wood");
+        java.util.List<int[]> tips = new java.util.ArrayList<>();
+        tips.add(new int[] {u, g + h + 1, v});
+        int limbs = 2 + r.nextInt(2);
+        for (int k = 0; k < limbs; k++) {
+            double a = r.nextDouble() * Math.PI * 2;
+            int len = 3 + r.nextInt(2), y0 = g + h - 2 - r.nextInt(2);
+            int x = u, z = v, y = y0;
+            for (int s = 1; s <= len; s++) {
+                x = u + (int) Math.round(Math.cos(a) * s);
+                z = v + (int) Math.round(Math.sin(a) * s);
+                y = y0 + s / 2;
+                Canvas.set(x, y, z, "spruce_wood");
+            }
+            tips.add(new int[] {x, y + 1, z});
+        }
+        for (int[] t : tips) {
+            double rx = 3 + r.nextDouble() * 1.2, ry = 2.2 + r.nextDouble() * 0.6;
+            for (int dx = -5; dx <= 5; dx++)
+                for (int dy = -3; dy <= 3; dy++)
+                    for (int dz = -5; dz <= 5; dz++) {
+                        double e = dx * dx / (rx * rx) + dy * dy / (ry * ry) + dz * dz / (rx * rx);
+                        if (e > 1 - 0.18 * r.nextDouble()) continue;
+                        Canvas.setIfAir(t[0] + dx, t[1] + dy, t[2] + dz, r.nextDouble() < 0.1 ? "flowering_azalea_leaves[persistent=true]" : "oak_leaves[persistent=true]");
+                    }
+        }
+        return true;
+    }
+
     static boolean birch(int u, int v, int g, int h) {
         if (!airColumn(u, v, g + 1, g + h + 1, 0)) return false;
         for (int y = g + 1; y < g + h; y++) Canvas.set(u, y, v, "birch_log[axis=y]");

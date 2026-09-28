@@ -105,6 +105,19 @@ done. Remaining: stock market / exchange (#43).
    area, bounds, waterfront/view/corner/park, suggested price) for the property system. Built in a fresh dev world at
    origin `0 64 0` (spawn `104 66 6`); the Nordhamn world is kept as `swedencore/run/world_nordhamn_2026-09-28`
    (rename it back to `world` to switch).
+1c. **Old spawn in a fresh 26.2 world (IN PROGRESS, 2026-09-28)**: the owner wants the builds of their old 1.18.1 server
+   (original at `Desktop/1.18.1 Paper/world_test`, 33 GB; spawn hub around x 1380-1830, z -130..310) in a brand-new
+   26.2 world with mountains, plus more buildings in the same style so it feels like one town. Existing builds must stay
+   exactly as they are; take the castle walls and the custom trees (spruce-wood trunks, oak crowns) as inspiration.
+   - Done: `world_oldspawn_2026-09-28` = old world upgraded by Paper (hub chunks force-loaded, so in 26.2 format).
+     `--region transplant --origin -1150,-1050 --src-center 1595,72 --source <oldspawn region dir>` copies the hub
+     block for block (99.84 % exact state match verified) into the new world (`world`, fresh seed, mountains west
+     of the hub) with a ragged blended edge. World spawn `-1052 126 -1078` (the old Essentials spawn in the castle).
+   - Next: `--region districts --origin -1150,-1050` (overlay: streets Torggatan, Kvarnvägen, Östergatan, Skogsgränd,
+     Sjövägen, Kyrkstigen around the hub, medieval houses, spawn-style trees); build with a copy of
+     `build_region.sh` using origin `-1150 64 -1050`; check with `--region view --origin -1150,-1050 --renders hubtop`.
+     Then maybe a town wall with round towers joining the districts. Not copied: block-entity contents (chest items,
+     sign text), entities (item frames, armor stands, NPCs), the church at 8104,-4114 (still only in oldspawn world).
 2. **Main menu GUI** (`/meny`, NORDIA pass item) → then first-join onboarding (see decisions above) → spawn protection
    for the Nordhamn area in the plugin (currently only vanilla `spawn-protection=16`) and making the market stalls
    rentable server-owned properties.

@@ -32,11 +32,41 @@ final class OldTown {
         STREETS.add(new Street(name, pts));
     }
 
+    /** World position of the castle (lots near it are worth more). */
+    static int CASTLE_X = 1660, CASTLE_Z = 40;
+    static String DISTRICT = "Övre staden";
+
     static void layout() {
+        if (Box.name.equals("districts")) {
+            districts();
+            return;
+        }
         street("Borggatan", 1690, -34, 1712, -52, 1740, -66, 1772, -76, 1806, -78, 1826, -86);
         street("Tornvägen", 1744, -68, 1748, -92, 1742, -112, 1728, -132);
         street("Kvarngränd", 1790, -77, 1798, -56, 1796, -34, 1804, -24);
         street("Smedjegränd", 1700, -46, 1690, -70, 1686, -96, 1700, -118);
+    }
+
+    /** Streets around the transplanted hub, given relative to the hub origin (the hub's own layout). */
+    static void districts() {
+        DISTRICT = "Nordia stad";
+        CASTLE_X = Box.worldX + 65;
+        CASTLE_Z = Box.worldZ - 30;
+        rel("Torggatan", 67, 110, 64, 132, 58, 152, 40, 178, 12, 196, -22, 194, -48, 184);
+        rel("Kvarnvägen", -70, 26, -78, 52, -86, 82, -96, 110, -112, 134, -132, 146);
+        rel("Östergatan", 116, 70, 138, 78, 162, 76, 186, 60, 202, 30);
+        rel("Skogsgränd", 12, 196, 2, 172, -16, 148, -40, 126, -62, 100, -84, 84);
+        rel("Sjövägen", 162, 76, 168, 104, 160, 132, 142, 160, 114, 180, 84, 188, 58, 186);
+        rel("Kyrkstigen", -48, 184, -70, 176, -92, 166, -112, 150);
+    }
+
+    static void rel(String name, int... uv) {
+        double[] xz = new double[uv.length];
+        for (int i = 0; i < uv.length; i += 2) {
+            xz[i] = Box.worldX + uv[i];
+            xz[i + 1] = Box.worldZ + uv[i + 1];
+        }
+        street(name, xz);
     }
 
     static final Set<String> NATURAL = Set.of("air", "cave_air", "grass_block", "dirt", "coarse_dirt", "podzol", "rooted_dirt",
@@ -205,7 +235,7 @@ final class OldTown {
     static Lot valued(Lot l) {
         B.Frame f = l.frame();
         int cu = f.wx(l.w() / 2, l.d() / 2), cv = f.wz(l.w() / 2, l.d() / 2);
-        double castle = Math.hypot(Box.worldX + cu - 1660, Box.worldZ + cv - 40);
+        double castle = Math.hypot(Box.worldX + cu - CASTLE_X, Box.worldZ + cv - CASTLE_Z);
         int edge = 99;
         for (int du = -30; du <= 30; du += 3)
             for (int dv = -30; dv <= 30; dv += 3)
@@ -342,7 +372,7 @@ final class OldTown {
             int u = f.wx(x, z), v = f.wz(x, z);
             int g = Terrain.h(u, v);
             if (!Canvas.isAir(u, g + 1, v)) continue;
-            if (Garden.fruitTree(u, v, g)) k++;
+            if (R.nextBoolean() ? Nature.spawnTree(u, v, g, R) : Garden.fruitTree(u, v, g)) k++;
         }
         // a bench by the door and an address label
         int bu = f.wx(doorX + 2, hz + hd), bv = f.wz(doorX + 2, hz + hd);
@@ -364,6 +394,14 @@ final class OldTown {
                 B.Dir arm = Math.abs(tz) > Math.abs(tx) ? (side * -tz > 0 ? B.Dir.WEST : B.Dir.EAST) : (side * tx > 0 ? B.Dir.SOUTH : B.Dir.NORTH);
                 Build.hangingLamp(u, v, arm);
             }
+            for (int i = 14; i < pts.size() - 3; i += 26) {
+                double[] a = pts.get(i - 1), b = pts.get(i + 1), p = pts.get(i);
+                double tx = b[0] - a[0], tz = b[1] - a[1], len = Math.hypot(tx, tz);
+                int side = ((i / 26) & 1) == 0 ? 1 : -1;
+                int u = (int) Math.round(p[0] - tz / len * 4.5 * side), v = (int) Math.round(p[1] + tx / len * 4.5 * side);
+                if (!Canvas.inXZ(u, v) || road(u, v) || Canvas.used(u, v) || BUILT[u - Canvas.MINX][v - Canvas.MINZ]) continue;
+                Nature.spawnTree(u, v, Terrain.h(u, v), R);
+            }
             double[] p0 = s.pts().get(0), p1 = s.pts().get(1);
             int su = (int) Math.round(p0[0] + (p1[0] - p0[0]) * 0.25), sv = (int) Math.round(p0[1] + (p1[1] - p0[1]) * 0.25);
             Town.label(su + 0.5, Terrain.h(su, sv) + 4.5, sv + 0.5, s.name(), "", "#F3C969", 0.9f);
@@ -371,7 +409,7 @@ final class OldTown {
     }
 
     static void registry(Path file) throws IOException {
-        StringBuilder sb = new StringBuilder("{\n  \"district\": \"Övre staden\",\n  \"lots\": [\n");
+        StringBuilder sb = new StringBuilder("{\n  \"district\": \"" + DISTRICT + "\",\n  \"lots\": [\n");
         for (int n = 0; n < LOTS.size(); n++) {
             Lot l = LOTS.get(n);
             int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;

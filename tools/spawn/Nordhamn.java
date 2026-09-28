@@ -20,7 +20,8 @@ public final class Nordhamn {
     public static void main(String[] args) throws Exception {
         Path out = Path.of("tools/spawn/build"), blocks = null, world = null, built = null;
         String renders = "quick", region = "spawn";
-        int originX = WORLD_X, originZ = WORLD_Z;
+        int originX = WORLD_X, originZ = WORLD_Z, srcX = 1595, srcZ = 72;
+        Path source = null;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--world" -> world = Path.of(args[++i]);
@@ -29,6 +30,12 @@ public final class Nordhamn {
                 case "--renders" -> renders = args[++i];
                 case "--compare" -> built = Path.of(args[++i]);
                 case "--region" -> region = args[++i];
+                case "--source" -> source = Path.of(args[++i]);
+                case "--src-center" -> {
+                    String[] o = args[++i].split(",");
+                    srcX = Integer.parseInt(o[0].trim());
+                    srcZ = Integer.parseInt(o[1].trim());
+                }
                 case "--origin" -> {
                     String[] o = args[++i].split(",");
                     originX = Integer.parseInt(o[0].trim());
@@ -39,15 +46,40 @@ public final class Nordhamn {
         }
         long t0 = System.currentTimeMillis();
         boolean massif = region.equals("massif");
-        if (region.equals("oldtown")) {
-            Box.region("oldtown", -96, 95, -72, 71, -40, 110, 1740, -80);
+        if (region.equals("transplant")) {
+            Box.region("hub", -255, 254, -247, 247, -30, 146, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            Terrain.nat = new WorldReader(world);
+            Transplant.generate(new WorldReader(source), srcX, srcZ);
+            log(t0, "transplant");
+            if (!renders.equals("none")) {
+                Render.prepare();
+                Render.prepareContext();
+                List<Shot> shots = List.of(
+                        new Shot("t_overview", true, 1600, 1000, 0, 60, 0, 215, 35, 700, 0),
+                        new Shot("t_top", true, 1200, 1200, 0, 60, 0, 180, 89.9, 620, 0),
+                        new Shot("t_hub", true, 1600, 1000, 0, 62, 0, 125, 38, 360, 0));
+                for (Shot s : shots) {
+                    Path p = out.resolve("preview").resolve(s.name() + ".png");
+                    Render.ortho(p, s.w(), s.h(), s.a(), s.b(), s.c(), s.d(), s.e(), s.f());
+                    log(t0, "render " + s.name());
+                }
+            }
+            Canvas.writeDatapack(out.resolve("datapack/nordia_hub"), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
+            log(t0, "datapack");
+            return;
+        }
+        if (region.equals("oldtown") || region.equals("districts")) {
+            if (region.equals("oldtown")) Box.region("oldtown", -96, 95, -72, 71, -40, 110, 1740, -80);
+            else Box.region("districts", -250, 250, -240, 240, -40, 110, originX, originZ);
             Terrain.worldX = Box.worldX;
             Terrain.worldZ = Box.worldZ;
             Terrain.nat = new WorldReader(world);
             OldTown.generate();
             log(t0, "oldtown");
             Canvas.validate(blocks);
-            OldTown.registry(out.resolve("oldtown_lots.json"));
+            OldTown.registry(out.resolve(region + "_lots.json"));
             if (!renders.equals("none")) {
                 Render.prepare();
                 Render.prepareContext();
@@ -63,7 +95,7 @@ public final class Nordhamn {
                     log(t0, "render " + s.name());
                 }
             }
-            Canvas.writeDatapack(out.resolve("datapack/nordia_oldtown"), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
+            Canvas.writeDatapack(out.resolve("datapack/nordia_" + region), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
             log(t0, "datapack");
             return;
         }
@@ -182,6 +214,7 @@ public final class Nordhamn {
 
     /** The "wow test": what a player sees from the places that matter, rendered from the built world. */
     static List<Shot> viewShots(String mode) {
+        if (mode.equals("hubtop")) return List.of(new Shot("hub_top_big", true, 1600, 1600, 0, 60, 0, 180, 89.9, 560, 0));
         if (mode.equals("hub")) return List.of(
                 new Shot("hub_top", true, 1400, 1400, 0, 60, 0, 180, 89.9, 420, 0),
                 new Shot("hub_iso", true, 1600, 1000, 0, 62, 0, 215, 40, 360, 0),

@@ -55,17 +55,27 @@ final class WorldReader {
     }
 
     String block(int x, int y, int z) {
+        return lookup(x, y, z, false);
+    }
+
+    /** Full block state including properties, e.g. "oak_stairs[facing=north,half=bottom,...]". */
+    String state(int x, int y, int z) {
+        return lookup(x, y, z, true);
+    }
+
+    private String lookup(int x, int y, int z, boolean full) {
         Chunk c = chunk(x >> 4, z >> 4);
         if (c == null) return null;
         Section s = c.sections.get(Math.floorDiv(y, 16));
         if (s == null) return "air";
-        if (s.data == null) return s.palette.get(0);
+        java.util.List<String> pal = full ? s.states : s.palette;
+        if (s.data == null) return pal.get(0);
         int bits = Math.max(4, 32 - Integer.numberOfLeadingZeros(s.palette.size() - 1));
         int perLong = 64 / bits;
         int index = ((y & 15) * 16 + (z & 15)) * 16 + (x & 15);
         long word = s.data[index / perLong];
         int value = (int) ((word >>> ((index % perLong) * bits)) & ((1L << bits) - 1));
-        return value < s.palette.size() ? s.palette.get(value) : "air";
+        return value < pal.size() ? pal.get(value) : "air";
     }
 
     private Chunk chunk(int cx, int cz) {
@@ -126,7 +136,16 @@ final class WorldReader {
                     Section s = new Section();
                     for (Object p : (List<?>) states.get("palette")) {
                         String name = String.valueOf(((Map<?, ?>) p).get("Name"));
-                        s.palette.add(name.startsWith("minecraft:") ? name.substring(10) : name);
+                        name = name.startsWith("minecraft:") ? name.substring(10) : name;
+                        s.palette.add(name);
+                        Object props = ((Map<?, ?>) p).get("Properties");
+                        if (props instanceof Map<?, ?> pm && !pm.isEmpty()) {
+                            java.util.TreeMap<String, String> sorted = new java.util.TreeMap<>();
+                            for (Map.Entry<?, ?> e : pm.entrySet()) sorted.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
+                            StringBuilder sb = new StringBuilder(name).append('[');
+                            for (Map.Entry<String, String> e : sorted.entrySet()) sb.append(sb.charAt(sb.length() - 1) == '[' ? "" : ",").append(e.getKey()).append('=').append(e.getValue());
+                            s.states.add(sb.append(']').toString());
+                        } else s.states.add(name);
                     }
                     s.data = (long[]) states.get("data");
                     c.sections.put((int) (byte) sec.get("Y"), s);
@@ -151,6 +170,7 @@ final class WorldReader {
 
     static final class Section {
         final List<String> palette = new ArrayList<>();
+        final List<String> states = new ArrayList<>();
         long[] data;
     }
 
