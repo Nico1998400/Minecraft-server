@@ -83,6 +83,13 @@ final class Render {
         c("lily_of_the_valley", 0xF0F0F0); c("allium", 0xB06AE0); c("pink_tulip", 0xE8A0C0); c("orange_tulip", 0xE8801C);
         c("pink_petals", 0xE7A5C8); c("wildflowers", 0xE8D060); c("sweet_berry_bush", 0x3F6A2A); c("lily_pad", 0x3F8A2A);
         c("cave_vines", 0x5A7A2A); c("cave_vines_plant", 0x5A7A2A); c("vine", 0x3F6A1A); c("glow_lichen", 0x7A9A8A);
+        c("resin_bricks", 0xC7582A); c("resin_block", 0xD8691E); c("pale_oak_planks", 0xE3D9D3); c("mangrove_planks", 0x773231);
+        c("stripped_birch_log", 0xC4B07B); c("light_gray_concrete", 0x7D7D73); c("gray_concrete", 0x36393D);
+        c("polished_deepslate", 0x484849); c("smooth_sandstone", 0xDBD3A0); c("smooth_stone_slab", 0x9E9E9E);
+        c("prismarine_bricks", 0x63AB9E); c("prismarine", 0x63A396); c("iron_trapdoor", 0xC8C8C8); c("cherry_leaves", 0xE7B3C7);
+        c("stone_path", 0x9A7F48); c("lilac", 0xB58FB6); c("wheat", 0xC7B04A); c("carrots", 0x4E9A2A); c("potatoes", 0x4E9A2A);
+        c("beetroots", 0x4E9A2A); c("farmland", 0x5B3A1E); c("green_terracotta", 0x4C532A); c("cyan_terracotta", 0x575B5B);
+        c("mud_bricks", 0x89684F); c("stripped_dark_oak_wood", 0x604A30); c("white_carpet", 0xE9ECEC);
         c("candle", 0xE8D8B0); c("white_candle", 0xF0F0F0); c("light", 0);
     }
 

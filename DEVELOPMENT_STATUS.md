@@ -98,6 +98,13 @@ done. Remaining: stock market / exchange (#43).
    `--region massif`, data pack `nordia:massif/build`, same origin `-572 64 378`). Check the built result with
    `--region view` (renders from the world files). Open: denser houses on the upper slopes, labels for key buildings,
    guardian faces, more farmland in the valley. Dev server view-distance raised to 16 so the mountains show.
+1b. **Villa district SydHamn** (2026-09-28, experimental second map): `--region villas --origin X,Z` builds a lake-shore
+   villa neighbourhood with named streets, a park and ~20 individually designed villas in ten families (torp,
+   sekelskiftesvilla, funkis, mansard, suterräng, tvåplanshus, modern, lyx, hörnvilla, 60-tal) on private lots with
+   gardens of four characters. Lots are valued by location and written to `build/villas_lots.json` (address, tier,
+   area, bounds, waterfront/view/corner/park, suggested price) for the property system. Built in a fresh dev world at
+   origin `0 64 0` (spawn `104 66 6`); the Nordhamn world is kept as `swedencore/run/world_nordhamn_2026-09-28`
+   (rename it back to `world` to switch).
 2. **Main menu GUI** (`/meny`, NORDIA pass item) → then first-join onboarding (see decisions above) → spawn protection
    for the Nordhamn area in the plugin (currently only vanilla `spawn-protection=16`) and making the market stalls
    rentable server-owned properties.

@@ -20,6 +20,7 @@ public final class Nordhamn {
     public static void main(String[] args) throws Exception {
         Path out = Path.of("tools/spawn/build"), blocks = null, world = null, built = null;
         String renders = "quick", region = "spawn";
+        int originX = WORLD_X, originZ = WORLD_Z;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--world" -> world = Path.of(args[++i]);
@@ -28,11 +29,39 @@ public final class Nordhamn {
                 case "--renders" -> renders = args[++i];
                 case "--compare" -> built = Path.of(args[++i]);
                 case "--region" -> region = args[++i];
+                case "--origin" -> {
+                    String[] o = args[++i].split(",");
+                    originX = Integer.parseInt(o[0].trim());
+                    originZ = Integer.parseInt(o[1].trim());
+                }
                 default -> throw new IllegalArgumentException(args[i]);
             }
         }
         long t0 = System.currentTimeMillis();
         boolean massif = region.equals("massif");
+        if (region.equals("villas")) {
+            Box.region("villas", -112, 111, -112, 111, -30, 60, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            if (world != null) Terrain.nat = new WorldReader(world);
+            VillaDistrict.generate();
+            log(t0, "villas");
+            Canvas.validate(blocks);
+            VillaDistrict.registry(out.resolve("villas_lots.json"));
+            if (!renders.equals("none")) {
+                Render.prepare();
+                Render.prepareContext();
+                for (Shot s : villaShots(renders)) {
+                    Path p = out.resolve("preview").resolve(s.name() + ".png");
+                    if (s.ortho()) Render.ortho(p, s.w(), s.h(), s.a(), s.b(), s.c(), s.d(), s.e(), s.f());
+                    else Render.view(p, s.w(), s.h(), s.a(), s.b(), s.c(), s.d(), s.e(), s.f(), s.fov());
+                    log(t0, "render " + s.name());
+                }
+            }
+            Canvas.writeDatapack(out.resolve("datapack/nordia_villas"), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
+            log(t0, "datapack");
+            return;
+        }
         if (region.equals("view")) {
             Box.region("view", -4, 4, -4, 4, 0, 1, WORLD_X, WORLD_Z);
             Terrain.worldX = WORLD_X;
@@ -136,6 +165,29 @@ public final class Nordhamn {
                 new Shot("wow_top", true, 1400, 1400, 0, 0, 0, 180, 89.9, 200, 0),
                 new Shot("wow7_aerial", false, 1600, 900, -170, 95, -150, 0, 30, 110, 60));
         return mode.equals("quick") ? all.subList(0, 4) : all;
+    }
+
+    static List<Shot> villaShots(String mode) {
+        Shot over = new Shot("v_overview", true, 1600, 1000, 0, 8, 0, 200, 38, 240, 0);
+        Shot top = new Shot("v_top", true, 1200, 1200, 0, 0, 0, 180, 89.9, 224, 0);
+        Shot street = new Shot("v_street", false, 1280, 720, 60, Canvas.ground(60, 2) + 2.6, 2, 20, Canvas.ground(20, 8) + 3, 8, 75);
+        Shot lake = new Shot("v_lake", false, 1280, 720, 0, 2, -80, 0, 8, -30, 70);
+        Shot hill = new Shot("v_hill", false, 1280, 720, 50, Canvas.ground(50, 70) + 3, 70, 0, 4, -20, 72);
+        if (mode.equals("quick")) return List.of(over, top, street);
+        if (mode.equals("lots")) {
+            List<Shot> l = new java.util.ArrayList<>();
+            for (VillaDistrict.Lot lot : VillaDistrict.LOTS) {
+                B.Frame f = lot.frame();
+                int cu = f.wx(lot.w() / 2, lot.d() + 7), cv = f.wz(lot.w() / 2, lot.d() + 7);
+                int tu = f.wx(lot.w() / 2, lot.d() / 2), tv = f.wz(lot.w() / 2, lot.d() / 2);
+                l.add(new Shot(String.format("lot_%02d", lot.id()), false, 960, 600, cu + 0.5, Canvas.ground(cu, cv) + 5, cv + 0.5,
+                        tu + 0.5, Canvas.ground(tu, tv) + 3, tv + 0.5, 70));
+            }
+            return l;
+        }
+        return List.of(over, top, street, lake, hill,
+                new Shot("v_strand", false, 1280, 720, -20, Canvas.ground(-20, -38) + 2.6, -38, 30, Canvas.ground(30, -40) + 3, -42, 75),
+                new Shot("v_park", false, 1280, 720, -40, Canvas.ground(-40, -2) + 3, -2, -40, 2, -30, 72));
     }
 
     static List<Shot> massifShots(String mode) {

@@ -436,7 +436,7 @@ final class Town {
                 ? "{text:\"" + title + "\",color:\"" + colour + "\",bold:true}"
                 : "[{text:\"" + title + "\",color:\"" + colour + "\",bold:true},{text:\"\\n" + subtitle + "\",color:\"#E8E8E8\",bold:false}]";
         Canvas.ENTITIES.add(String.format(java.util.Locale.ROOT,
-                "summon text_display ~%.1f ~%.1f ~%.1f {Tags:[\"nordia_spawn\"],billboard:\"center\",shadow:1b,background:1073741824,"
+                "summon text_display ~%.1f ~%.1f ~%.1f {Tags:[\"" + Canvas.TAG + "\"],billboard:\"center\",shadow:1b,background:1073741824,"
                 + "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[0f,0f,0f],scale:[%.1ff,%.1ff,%.1ff]},text:%s}",
                 u, y, v, scale, scale, scale, text));
     }
