@@ -247,10 +247,12 @@ final class Render {
     static Mat cell(int x, int y, int z) {
         if (WORLD_ONLY) return y < -40 || y > 200 ? null : ctxMat(x, y, z);
         if (Canvas.in(x, y, z)) {
-            Mat m = MATS[Canvas.VOX[Canvas.idx(x, y, z)]];
+            short v = Canvas.VOX[Canvas.idx(x, y, z)];
+            if (v == Canvas.KEEP) return ctxMat(x, y, z);
+            Mat m = MATS[v];
             return m.invisible ? null : m;
         }
-        if (Canvas.inXZ(x, z)) return null; // above or below the canvas box: open air
+        if (Canvas.inXZ(x, z) && !Canvas.OVERLAY) return null; // above or below the canvas box: open air
         return ctxMat(x, y, z);
     }
 

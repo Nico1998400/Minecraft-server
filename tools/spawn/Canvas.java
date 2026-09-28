@@ -35,8 +35,25 @@ final class Canvas {
     /** Separate stream for the landscape, so changes to it never reshuffle the town. */
     static final Random TERRAIN_RNG = new Random(4217);
 
+    /** Cells marked KEEP are not written: the world keeps whatever is there (overlay regions). */
+    static final short KEEP;
+    static boolean OVERLAY = false;
+
     static {
         id("air");
+        KEEP = id("keep");
+    }
+
+    /** Switches to overlay mode: every cell keeps the world block until something is placed there. */
+    static void overlay() {
+        OVERLAY = true;
+        java.util.Arrays.fill(VOX, KEEP);
+    }
+
+    static String world(int x, int y, int z) {
+        if (Terrain.nat == null) return "air";
+        String b = Terrain.nat.block(Box.worldX + x, y + 64, Box.worldZ + z);
+        return b == null ? "air" : b;
     }
 
     static short id(String s) {
@@ -64,15 +81,23 @@ final class Canvas {
     }
 
     static void setIfAir(int x, int y, int z, String s) {
-        if (in(x, y, z) && VOX[idx(x, y, z)] == 0) VOX[idx(x, y, z)] = id(s);
+        if (isAir(x, y, z)) VOX[idx(x, y, z)] = id(s);
     }
 
     static String get(int x, int y, int z) {
-        return in(x, y, z) ? PALETTE.get(VOX[idx(x, y, z)]) : "air";
+        if (!in(x, y, z)) return "air";
+        short v = VOX[idx(x, y, z)];
+        return v == KEEP ? world(x, y, z) : PALETTE.get(v);
     }
 
     static boolean isAir(int x, int y, int z) {
-        return in(x, y, z) && VOX[idx(x, y, z)] == 0;
+        if (!in(x, y, z)) return false;
+        short v = VOX[idx(x, y, z)];
+        if (v == KEEP) {
+            String b = world(x, y, z);
+            return b.equals("air") || b.equals("cave_air") || B.isPlant(b);
+        }
+        return v == 0;
     }
 
     static boolean isSolid(int x, int y, int z) {
@@ -153,6 +178,7 @@ final class Canvas {
         boolean[] done = new boolean[VOX.length];
         int[] phaseOf = new int[PALETTE.size()];
         for (int i = 0; i < PALETTE.size(); i++) phaseOf[i] = phase(PALETTE.get(i));
+        phaseOf[KEEP] = -1;
         for (int ph = 0; ph < 3; ph++)
             for (int y = MINY; y <= MAXY; y++)
                 for (int z = MINZ; z <= MAXZ; z++)
@@ -295,7 +321,7 @@ final class Canvas {
     static void validate(Path blockList) throws IOException {
         if (blockList == null) return;
         Set<String> known = new TreeSet<>(Files.readAllLines(blockList).stream().map(String::trim).toList());
-        known.addAll(List.of("air", "water", "light", "tall_grass", "large_fern", "cave_vines", "cave_vines_plant", "vine",
+        known.addAll(List.of("air", "keep", "water", "light", "tall_grass", "large_fern", "cave_vines", "cave_vines_plant", "vine",
                 "glow_lichen"));
         Set<String> unknown = new TreeSet<>();
         for (String s : PALETTE) {

@@ -39,6 +39,34 @@ public final class Nordhamn {
         }
         long t0 = System.currentTimeMillis();
         boolean massif = region.equals("massif");
+        if (region.equals("oldtown")) {
+            Box.region("oldtown", -96, 95, -72, 71, -40, 110, 1740, -80);
+            Terrain.worldX = Box.worldX;
+            Terrain.worldZ = Box.worldZ;
+            Terrain.nat = new WorldReader(world);
+            OldTown.generate();
+            log(t0, "oldtown");
+            Canvas.validate(blocks);
+            OldTown.registry(out.resolve("oldtown_lots.json"));
+            if (!renders.equals("none")) {
+                Render.prepare();
+                Render.prepareContext();
+                List<Shot> shots = List.of(
+                        new Shot("o_overview", true, 1600, 1000, 0, 60, 0, 200, 38, 220, 0),
+                        new Shot("o_overview_w", true, 1600, 1000, 0, 60, 60, 125, 35, 300, 0),
+                        new Shot("o_top", true, 1200, 900, 0, 60, 0, 180, 89.9, 200, 0),
+                        new Shot("o_street", false, 1280, 720, 60, Canvas.ground(60, 2) + 2.6, 2, 0, Canvas.ground(0, 10) + 6, 10, 72));
+                for (Shot s : shots) {
+                    Path p = out.resolve("preview").resolve(s.name() + ".png");
+                    if (s.ortho()) Render.ortho(p, s.w(), s.h(), s.a(), s.b(), s.c(), s.d(), s.e(), s.f());
+                    else Render.view(p, s.w(), s.h(), s.a(), s.b(), s.c(), s.d(), s.e(), s.f(), s.fov());
+                    log(t0, "render " + s.name());
+                }
+            }
+            Canvas.writeDatapack(out.resolve("datapack/nordia_oldtown"), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
+            log(t0, "datapack");
+            return;
+        }
         if (region.equals("villas")) {
             Box.region("villas", -112, 111, -112, 111, -30, 60, originX, originZ);
             Terrain.worldX = originX;
@@ -63,9 +91,9 @@ public final class Nordhamn {
             return;
         }
         if (region.equals("view")) {
-            Box.region("view", -4, 4, -4, 4, 0, 1, WORLD_X, WORLD_Z);
-            Terrain.worldX = WORLD_X;
-            Terrain.worldZ = WORLD_Z;
+            Box.region("view", -4, 4, -4, 4, 0, 1, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
             Terrain.nat = new WorldReader(world);
             Render.WORLD_ONLY = true;
             Render.CTX = 440;
@@ -154,6 +182,11 @@ public final class Nordhamn {
 
     /** The "wow test": what a player sees from the places that matter, rendered from the built world. */
     static List<Shot> viewShots(String mode) {
+        if (mode.equals("hub")) return List.of(
+                new Shot("hub_top", true, 1400, 1400, 0, 60, 0, 180, 89.9, 420, 0),
+                new Shot("hub_iso", true, 1600, 1000, 0, 62, 0, 215, 40, 360, 0),
+                new Shot("hub_iso_w", true, 1600, 1000, 0, 62, 0, 125, 40, 360, 0),
+                new Shot("hub_close", true, 1600, 1000, 0, 62, 0, 215, 35, 180, 0));
         List<Shot> all = List.of(
                 new Shot("wow1_arrival", false, 1280, 720, -5, 2.6, -9, 0, 22, 70, 80),
                 new Shot("wow1_land_entrance", false, 1280, 720, 74, eye(74, 24, 2.6), 24, 0, 14, 0, 75),
