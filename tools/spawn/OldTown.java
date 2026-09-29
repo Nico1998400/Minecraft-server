@@ -58,6 +58,11 @@ final class OldTown {
         rel("Skogsgränd", 12, 196, 2, 172, -16, 148, -40, 126, -62, 100, -84, 84);
         rel("Sjövägen", 162, 76, 168, 104, 160, 132, 142, 160, 114, 180, 84, 188, 58, 186);
         rel("Kyrkstigen", -48, 184, -70, 176, -92, 166, -112, 150);
+        rel("Västergatan", -62, 100, -30, 108, 8, 112, 38, 118, 60, 130);
+        rel("Bryggvägen", -96, 110, -76, 138, -58, 160, -44, 182);
+        rel("Norra vägen", 150, 24, 162, -14, 150, -52, 128, -84, 104, -100);
+        rel("Arenavägen", -196, -8, -206, 28, -198, 64, -182, 98);
+        rel("Arenagränd", -196, -30, -204, -64, -192, -96, -174, -112);
     }
 
     static void rel(String name, int... uv) {
@@ -187,7 +192,7 @@ final class OldTown {
                 min = Math.min(min, g);
                 max = Math.max(max, g);
             }
-        if (max - min > 7) return false;
+        if (max - min > 9) return false;
         int front = 0;
         for (int x = 0; x < w; x++) if (road(f.wx(x, d), f.wz(x, d)) || road(f.wx(x, d + 1), f.wz(x, d + 1))) front++;
         return front >= w / 2;
@@ -205,7 +210,8 @@ final class OldTown {
                     double tx = b[0] - a[0], tz = b[1] - a[1], len = Math.hypot(tx, tz);
                     double nx = -tz / len * side, nz = tx / len * side;
                     B.Dir primary = Math.abs(nx) > Math.abs(nz) ? (nx > 0 ? B.Dir.WEST : B.Dir.EAST) : (nz > 0 ? B.Dir.NORTH : B.Dir.SOUTH);
-                    int[][] sizes = {{28, 30}, {24, 26}, {20, 22}, {17, 20}, {14, 17}};
+                    int[][] sizes = Box.name.equals("districts") ? new int[][] {{24, 26}, {20, 22}, {17, 19}, {15, 17}, {13, 15}, {12, 14}}
+                            : new int[][] {{28, 30}, {24, 26}, {20, 22}, {17, 20}, {14, 17}};
                     boolean placed = false;
                     search:
                     for (int[] sz : sizes)
@@ -219,7 +225,7 @@ final class OldTown {
                             for (int x = 0; x < w; x++) for (int z = 0; z < d; z++) if (!road(probe.wx(x, z), probe.wz(x, z))) Canvas.use(probe.wx(x, z), probe.wz(x, z), probe.wx(x, z), probe.wz(x, z));
                             LOTS.add(new Lot(id++, s.name(), number, probe, w, d, 0, null, null, null));
                             number += 2;
-                            k += (int) (w * 2.1) + 3;
+                            k += (int) (w * 2) + 2;
                             placed = true;
                             break search;
                         }
@@ -286,8 +292,8 @@ final class OldTown {
     static Lot buildLot(Lot l, Medieval.Type t) {
         B.Frame lf = l.frame();
         int[] sz = Medieval.size(t);
-        int hw = Math.min(sz[0], l.w() - 8), hd = Math.min(sz[1], l.d() - 9);
-        int setback = Math.max(4, Math.min(l.d() - hd - 4, 4 + R.nextInt(3)));
+        int hw = Math.min(sz[0], l.w() - 6), hd = Math.min(sz[1], l.d() - 7);
+        int setback = Math.max(Box.name.equals("districts") ? 2 : 4, Math.min(l.d() - hd - 4, (Box.name.equals("districts") ? 2 : 4) + R.nextInt(3)));
         int hx = (l.w() - hw) / 2 + R.nextInt(3) - 1, hz = l.d() - setback - hd;
         // clear the lot of trees and tall plants, lay grass
         int floor = Integer.MIN_VALUE;

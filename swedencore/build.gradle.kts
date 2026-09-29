@@ -77,5 +77,5 @@ tasks.assemble {
 
 tasks.runServer {
     minecraftVersion(libs.versions.minecraft.get())
-    jvmArgs("-Xms1G", "-Xmx2G", "-Dcom.mojang.eula.agree=true")
+    jvmArgs("-Xms2G", "-Xmx6G", "-Dcom.mojang.eula.agree=true")
 }

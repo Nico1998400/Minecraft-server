@@ -47,7 +47,7 @@ public final class Nordhamn {
         long t0 = System.currentTimeMillis();
         boolean massif = region.equals("massif");
         if (region.equals("transplant")) {
-            Box.region("hub", -255, 254, -247, 247, -30, 146, originX, originZ);
+            Box.region("hub", -255, 254, -247, 247, -128, 146, originX, originZ);
             Terrain.worldX = originX;
             Terrain.worldZ = originZ;
             Terrain.nat = new WorldReader(world);
@@ -83,7 +83,11 @@ public final class Nordhamn {
             if (!renders.equals("none")) {
                 Render.prepare();
                 Render.prepareContext();
-                List<Shot> shots = List.of(
+                List<Shot> shots = region.equals("districts") ? List.of(
+                        new Shot("d_overview", true, 1600, 1000, 0, 60, 60, 200, 36, 480, 0),
+                        new Shot("d_top", true, 1400, 1400, 0, 60, 0, 180, 89.9, 500, 0),
+                        new Shot("d_south", true, 1600, 1000, 20, 60, 150, 200, 34, 220, 0),
+                        new Shot("d_west", true, 1600, 1000, -90, 60, 90, 125, 34, 220, 0)) : List.of(
                         new Shot("o_overview", true, 1600, 1000, 0, 60, 0, 200, 38, 220, 0),
                         new Shot("o_overview_w", true, 1600, 1000, 0, 60, 60, 125, 35, 300, 0),
                         new Shot("o_top", true, 1200, 900, 0, 60, 0, 180, 89.9, 200, 0),

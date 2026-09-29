@@ -10,6 +10,28 @@ final class Transplant {
             "andesite", "diorite", "granite", "gravel", "sand", "clay", "tuff", "deepslate", "moss_block", "mud", "dirt_path", "calcite",
             "snow_block", "sandstone", "red_sand", "terracotta", "water");
 
+    static final java.util.Set<String> DEEP = java.util.Set.of("deepslate", "tuff", "stone", "cobbled_deepslate", "lava", "water",
+            "calcite", "smooth_basalt", "amethyst_block", "budding_amethyst", "amethyst_cluster", "small_amethyst_bud",
+            "medium_amethyst_bud", "large_amethyst_bud", "dripstone_block", "pointed_dripstone", "glow_lichen", "moss_block", "clay",
+            "cave_air", "infested_deepslate", "infested_stone", "bedrock", "obsidian", "magma_block", "cave_vines", "cave_vines_plant",
+            "moss_carpet", "rooted_dirt", "hanging_roots", "azalea", "flowering_azalea", "big_dripleaf", "big_dripleaf_stem",
+            "small_dripleaf", "spore_blossom", "sculk", "sculk_vein", "sculk_sensor", "sculk_shrieker", "sculk_catalyst", "seagrass",
+            "kelp", "kelp_plant", "mossy_cobblestone", "spawner", "chest", "cobweb", "air", "granite", "diorite", "andesite",
+            "gravel", "dirt", "sand", "sandstone", "bubble_column", "rail", "oak_fence", "oak_planks", "mud", "powder_snow", "packed_ice", "ice", "blue_ice");
+
+    /** y (relative) of the deepest man-made block in the column, or a large value if there is none. */
+    static int deepestBuilt(WorldReader src, int x, int z) {
+        int deepest = 9999;
+        int top = src.surface(x, z);
+        if (top == WorldReader.MISSING) return deepest;
+        for (int y = -64; y < top - 16; y++) {
+            String b = src.block(x, y, z);
+            if (b == null) break;
+            if (!DEEP.contains(b) && !b.endsWith("_ore") && !OldTown.natural(b)) return y - 64;
+        }
+        return deepest;
+    }
+
     /** The natural ground under a column (roofs and floors of buildings skipped), relative to y 64. */
     static int terrain(WorldReader src, int x, int z) {
         int top = src.surface(x, z);
@@ -42,8 +64,10 @@ final class Transplant {
                 }
                 int oldG = terrain(src, sx, sz);
                 if (w > 0.999) {
-                    // the whole column, bottom to top: buildings keep their interiors, cellars and foundations
-                    for (int y = Canvas.MINY; y <= Canvas.MAXY; y++) {
+                    // from a little below the ground to the top: buildings keep interiors, cellars and foundations;
+                    // deeper down the new world keeps its own bedrock and caves
+                    int from = Math.min(Math.min(oldG, src.surface(sx, sz) - 64) - 12, deepestBuilt(src, sx, sz) - 2);
+                    for (int y = Math.max(Canvas.MINY, from); y <= Canvas.MAXY; y++) {
                         String s = src.state(sx, y + 64, sz);
                         Canvas.set(u, y, v, s == null ? "air" : s);
                     }
