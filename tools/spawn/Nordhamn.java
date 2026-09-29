@@ -22,8 +22,20 @@ public final class Nordhamn {
         String renders = "quick", region = "spawn";
         int originX = WORLD_X, originZ = WORLD_Z, srcX = 1595, srcZ = 72;
         Path source = null;
+        String packName = null, kind = "any";
+        int boxMinX = Integer.MIN_VALUE, boxMaxX = 0, boxMinZ = 0, boxMaxZ = 0;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
+                case "--kind" -> kind = args[++i];
+                case "--band" -> Transplant.BAND = Integer.parseInt(args[++i]);
+                case "--fill-only" -> Transplant.FILL_ONLY = true;
+                case "--hub" -> {
+                    String[] b = args[++i].split(",");
+                    Transplant.HX0 = Integer.parseInt(b[0].trim());
+                    Transplant.HX1 = Integer.parseInt(b[1].trim());
+                    Transplant.HZ0 = Integer.parseInt(b[2].trim());
+                    Transplant.HZ1 = Integer.parseInt(b[3].trim());
+                }
                 case "--world" -> world = Path.of(args[++i]);
                 case "--blocks" -> blocks = Path.of(args[++i]);
                 case "--out" -> out = Path.of(args[++i]);
@@ -31,6 +43,14 @@ public final class Nordhamn {
                 case "--compare" -> built = Path.of(args[++i]);
                 case "--region" -> region = args[++i];
                 case "--source" -> source = Path.of(args[++i]);
+                case "--name" -> packName = args[++i];
+                case "--box" -> {
+                    String[] b = args[++i].split(",");
+                    boxMinX = Integer.parseInt(b[0].trim());
+                    boxMaxX = Integer.parseInt(b[1].trim());
+                    boxMinZ = Integer.parseInt(b[2].trim());
+                    boxMaxZ = Integer.parseInt(b[3].trim());
+                }
                 case "--src-center" -> {
                     String[] o = args[++i].split(",");
                     srcX = Integer.parseInt(o[0].trim());
@@ -47,7 +67,11 @@ public final class Nordhamn {
         long t0 = System.currentTimeMillis();
         boolean massif = region.equals("massif");
         if (region.equals("transplant")) {
-            Box.region("hub", -255, 254, -247, 247, -128, 146, originX, originZ);
+            boolean tile = boxMinX != Integer.MIN_VALUE;
+            String name = packName != null ? packName : "hub";
+            Box.region(name, tile ? boxMinX : Transplant.HX0, tile ? boxMaxX : Transplant.HX1,
+                    tile ? boxMinZ : Transplant.HZ0, tile ? boxMaxZ : Transplant.HZ1, -128, 146, originX, originZ);
+            if (tile) Canvas.LOAD_TICKS = 160;
             Terrain.worldX = originX;
             Terrain.worldZ = originZ;
             Terrain.nat = new WorldReader(world);
@@ -66,7 +90,160 @@ public final class Nordhamn {
                     log(t0, "render " + s.name());
                 }
             }
-            Canvas.writeDatapack(out.resolve("datapack/nordia_hub"), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
+            boolean spawnHere = Canvas.MINX <= 98 && 98 <= Canvas.MAXX && Canvas.MINZ <= -28 && -28 <= Canvas.MAXZ;
+            Canvas.writeDatapack(out.resolve("datapack/nordia_" + name), Canvas.compile(),
+                    spawnHere ? 98 : 0, spawnHere ? 62 : Integer.MIN_VALUE, spawnHere ? -28 : 0);
+            log(t0, "datapack");
+            return;
+        }
+        if (region.equals("hub-restore")) {
+            if (originX == WORLD_X && originZ == WORLD_Z) {
+                originX = -1150;
+                originZ = -1050;
+            }
+            if (source == null) {
+                source = Path.of("swedencore/run/world_oldspawn_2026-09-28/dimensions/minecraft/overworld/region");
+            }
+            Box.region("hub_restore", -250, 250, -240, 240, -40, 110, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            Transplant.restoreBuilt(new WorldReader(source), srcX, srcZ);
+            log(t0, "hub-restore");
+            Canvas.writeDatapack(out.resolve("datapack/nordia_hub_restore"), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
+            log(t0, "datapack");
+            return;
+        }
+        if (region.equals("copy")) {
+            if (originX == WORLD_X && originZ == WORLD_Z) {
+                originX = 0;
+                originZ = 0;
+            }
+            if (source == null) {
+                source = Path.of("swedencore/run/world_oldspawn_2026-09-28/dimensions/minecraft/overworld/region");
+            }
+            int x0 = boxMinX == Integer.MIN_VALUE ? -64 : boxMinX;
+            int x1 = boxMinX == Integer.MIN_VALUE ? 64 : boxMaxX;
+            int z0 = boxMinX == Integer.MIN_VALUE ? -64 : boxMinZ;
+            int z1 = boxMinX == Integer.MIN_VALUE ? 64 : boxMaxZ;
+            String name = packName != null ? packName : "copy";
+            Box.region(name, x0, x1, z0, z1, -48, 80, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            Canvas.LOAD_TICKS = 80;
+            if (name.startsWith("wipe")) Transplant.wipeFlat();
+            else Transplant.copyConnected(new WorldReader(source), srcX, srcZ, kind);
+            log(t0, name);
+            Canvas.writeDatapack(out.resolve("datapack/nordia_" + name), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
+            log(t0, "datapack");
+            return;
+        }
+        if (region.equals("community")) {
+            if (originX == WORLD_X && originZ == WORLD_Z) {
+                originX = 0;
+                originZ = 0;
+            }
+            if (source == null) {
+                source = Path.of("swedencore/run/world_oldspawn_2026-09-28/dimensions/minecraft/overworld/region");
+            }
+            int x0 = boxMinX == Integer.MIN_VALUE ? -250 : boxMinX;
+            int x1 = boxMinX == Integer.MIN_VALUE ? 400 : boxMaxX;
+            int z0 = boxMinX == Integer.MIN_VALUE ? -250 : boxMinZ;
+            int z1 = boxMinX == Integer.MIN_VALUE ? 250 : boxMaxZ;
+            String name = packName != null ? packName : "community";
+            Box.region(name, x0, x1, z0, z1, -128, 146, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            Canvas.LOAD_TICKS = 160;
+            Transplant.community(new WorldReader(source), srcX, srcZ);
+            log(t0, name);
+            boolean spawnHere = x0 <= 98 && 98 <= x1 && z0 <= -28 && -28 <= z1;
+            Canvas.writeDatapack(out.resolve("datapack/nordia_" + name), Canvas.compile(),
+                    spawnHere ? 98 : 0, spawnHere ? 62 : Integer.MIN_VALUE, spawnHere ? -28 : 0);
+            log(t0, "datapack");
+            return;
+        }
+        if (region.equals("districts-clear")) {
+            if (originX == WORLD_X && originZ == WORLD_Z) {
+                originX = -1150;
+                originZ = -1050;
+            }
+            Box.region("districts_clear", -250, 250, -240, 240, -40, 110, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            Terrain.nat = new WorldReader(world);
+            OldTown.clearFromRegistry(out.resolve("districts_lots.json"));
+            log(t0, "districts-clear");
+            Canvas.writeDatapack(out.resolve("datapack/nordia_districts_clear"), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
+            log(t0, "datapack");
+            return;
+        }
+        if (region.equals("leftover-walls")) {
+            if (originX == WORLD_X && originZ == WORLD_Z) {
+                originX = -1150;
+                originZ = -1050;
+            }
+            if (source == null) {
+                source = Path.of("swedencore/run/world_oldspawn_2026-09-28/dimensions/minecraft/overworld/region");
+            }
+            Box.region("leftover_walls", -250, 250, -240, 240, -40, 110, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            List<Canvas.Cmd> cmds = OldTown.leftoverWallFills(out.resolve("districts_lots.json"));
+            log(t0, "leftover-walls");
+            Canvas.writeDatapack(out.resolve("datapack/nordia_leftover_walls"), cmds, 0, Integer.MIN_VALUE, 0);
+            log(t0, "datapack");
+            return;
+        }
+        if (region.equals("leftover-streets")) {
+            if (originX == WORLD_X && originZ == WORLD_Z) {
+                originX = -1150;
+                originZ = -1050;
+            }
+            Box.region("leftover_streets", -250, 250, -240, 240, -40, 110, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            List<Canvas.Cmd> cmds = OldTown.leftoverStreetFills(out.resolve("districts_lots.json"));
+            log(t0, "leftover-streets");
+            Canvas.writeDatapack(out.resolve("datapack/nordia_leftover_streets"), cmds, 0, Integer.MIN_VALUE, 0);
+            log(t0, "datapack");
+            return;
+        }
+        if (region.equals("leftover-ground")) {
+            if (originX == WORLD_X && originZ == WORLD_Z) {
+                originX = -1150;
+                originZ = -1050;
+            }
+            Box.region("leftover_ground", -250, 250, -240, 240, -40, 110, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            Terrain.nat = new WorldReader(world);
+            OldTown.leftoverGroundFix(out.resolve("districts_lots.json"));
+            log(t0, "leftover-ground");
+            Canvas.writeDatapack(out.resolve("datapack/nordia_leftover_ground"), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
+            log(t0, "datapack");
+            return;
+        }
+        if (region.equals("hill-blend")) {
+            if (originX == WORLD_X && originZ == WORLD_Z) {
+                originX = -1150;
+                originZ = -1050;
+            }
+            if (world == null) {
+                world = Path.of("swedencore/run/world/dimensions/minecraft/overworld/region");
+            }
+            int x0 = boxMinX == Integer.MIN_VALUE ? -250 : boxMinX;
+            int x1 = boxMinX == Integer.MIN_VALUE ? 250 : boxMaxX;
+            int z0 = boxMinX == Integer.MIN_VALUE ? -250 : boxMinZ;
+            int z1 = boxMinX == Integer.MIN_VALUE ? 250 : boxMaxZ;
+            String name = packName != null ? packName : "hill_blend";
+            Box.region(name, x0, x1, z0, z1, -48, 140, originX, originZ);
+            Terrain.worldX = originX;
+            Terrain.worldZ = originZ;
+            Terrain.nat = new WorldReader(world);
+            Canvas.LOAD_TICKS = 80;
+            Transplant.hillBlend(Terrain.nat);
+            log(t0, name);
+            Canvas.writeDatapack(out.resolve("datapack/nordia_" + name), Canvas.compile(), 0, Integer.MIN_VALUE, 0);
             log(t0, "datapack");
             return;
         }

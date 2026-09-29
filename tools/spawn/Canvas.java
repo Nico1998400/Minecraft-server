@@ -38,6 +38,7 @@ final class Canvas {
     /** Cells marked KEEP are not written: the world keeps whatever is there (overlay regions). */
     static final short KEEP;
     static boolean OVERLAY = false;
+    static int LOAD_TICKS = 100;
 
     static {
         id("air");
@@ -57,6 +58,7 @@ final class Canvas {
     }
 
     static short id(String s) {
+        if (s.equals("grass") || s.startsWith("grass[")) s = "short_grass" + s.substring(5);
         return INDEX.computeIfAbsent(s, k -> {
             PALETTE.add(k);
             if (PALETTE.size() > Short.MAX_VALUE) throw new IllegalStateException("palette overflow");
@@ -279,9 +281,10 @@ final class Canvas {
                 "# Usage: /execute positioned " + Box.worldX + " 64 " + Box.worldZ + " run function " + ns + "build",
                 "kill @e[type=marker,tag=" + marker + "]"));
         build.addAll(forceload("execute align xyz run ", "add"));
-        build.add("schedule function " + ns + "start 100t");
+        build.add("schedule function " + ns + "start " + LOAD_TICKS + "t");
         build.add("execute align xyz run summon marker ~ ~ ~ {Tags:[\"" + marker + "\"]}");
         build.add("tellraw @a {\"text\":\"[NORDIA] Bygger " + Box.name + " — " + parts.size() + " steg...\",\"color\":\"gold\"}");
+        build.add("say Bygger " + Box.name);
         build.add("");
         write(fn.resolve("build.mcfunction"), String.join("\n", build));
         write(fn.resolve("start.mcfunction"), String.join("\n",
@@ -308,6 +311,7 @@ final class Canvas {
         finish.addAll(forceload(at, "remove"));
         finish.add("kill @e[type=marker,tag=" + marker + "]");
         finish.add("tellraw @a {\"text\":\"[NORDIA] " + Box.name + " är klart!\",\"color\":\"green\"}");
+        finish.add("say " + Box.name + " är klart");
         finish.add("");
         write(fn.resolve("finish.mcfunction"), String.join("\n", finish));
         System.out.printf("datapack: %d commands in %d parts, %d entities -> %s%n", cmds.size(), parts.size(),

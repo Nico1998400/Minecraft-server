@@ -39,12 +39,20 @@ Test reports: `swedencore/build/reports/tests/test/index.html`.
 ```
 
 `run-paper` downloads Paper 26.2, builds the plugin and starts a server in `swedencore/run/` (gitignored) with the
-EULA flag set. The plugin creates `plugins/SwedenCore/config.yml` whose defaults match docker compose.
+EULA flag set, 8 GB heap and IPv4 so port-forwarded clients can connect. FastAsyncWorldEdit and FastAsyncVoxelSniper
+(VoxelSniper for 26.2) are downloaded into `plugins/`, and `branding/server-icon.png` is copied as the server-list icon.
+and `branding/server-icon.png` is copied as the server-list icon. The plugin creates
+`plugins/SwedenCore/config.yml` whose defaults match docker compose. The game port is **25565** (TCP); do not forward
+RCON (25575). Friends need Java Edition and a Mojang/Microsoft account (`online-mode=true`).
 
 Useful console/admin commands:
 
 | Command | Purpose |
 |---|---|
+| `/spawn` | Teleport to the overworld spawn |
+| `/setspawn` | Set that spawn to your current position (op) |
+| `//wand` | WorldEdit/FAWE selection wand (op; wooden axe) |
+| Arrow + `/b ball` `/v grass_block` | VoxelSniper brush (op; `/vs` for help, `/u` undo) |
 | `/nordia` | Plugin version |
 | `/nordia reload` | Reload language files (`plugins/SwedenCore/lang/*.properties` override bundled keys) |
 | `/eco give|take <player> <amount>` | Admin mint / burn (ledgered, audit-logged) |

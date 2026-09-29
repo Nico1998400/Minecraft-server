@@ -16,11 +16,15 @@ permissions:
       nordia.balance.others: true
       nordia.admin.property: true
       nordia.admin.city: true
+      nordia.admin.spawn: true
   nordia.admin.property:
     description: Define and delete properties
     default: op
   nordia.admin.city:
     description: Create cities
+    default: op
+  nordia.admin.spawn:
+    description: Set the server spawn point
     default: op
   nordia.admin.property.bypass:
     description: Build anywhere regardless of property protection (not granted by nordia.admin)

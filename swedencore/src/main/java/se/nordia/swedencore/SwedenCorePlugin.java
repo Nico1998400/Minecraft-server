@@ -273,6 +273,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new LoanCommands(services).register(event.registrar());
             new TransportCommands(services).register(event.registrar());
             new se.nordia.swedencore.paper.command.ShareCommands(services).register(event.registrar());
+            new se.nordia.swedencore.paper.command.SpawnCommands(services).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

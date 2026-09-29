@@ -1,6 +1,6 @@
 # Development Status
 
-_Last updated: 2026-09-27_
+_Last updated: 2026-09-29_
 
 ## Current phase
 **P0, P1, P2 complete (MVP). P3 feature-complete:** market statistics, loans, bankruptcy, company finance, renting,
@@ -115,10 +115,32 @@ done. Remaining: stock market / exchange (#43).
      of the hub) with a ragged blended edge. World spawn `-1052 126 -1078` (the old Essentials spawn in the castle).
    - Done 2026-09-29: cellars and underground builds copied too (copy starts below the deepest man-made block);
      `--region districts --origin -1150,-1050` built 65 medieval houses on 11 streets around the hub (registry
-     `build/districts_lots.json`). Dev server heap raised to 6 GB (2 GB ran out of memory on the big build).
+     `build/districts_lots.json`). **Removed 2026-09-29** at the owner's request: the 65 cottages, lot walls/hedges and
+     address labels (`--region districts-clear`). Hub shop/stalls outside the church restored from oldspawn
+     (`--region hub-restore`) after the second clear over-dug them. Leftover generated stone walls / house shells at
+     the old lots are stripped with `--region leftover-walls` (skips original hub columns). Generated district
+     cobblestone/stone roads and retaining walls (the cliff-like murar) are stripped with `--region leftover-streets`.
+     Kept the transplanted hub
+     (church, trees, bridge, towers, shops, town hall) plus custom spruce-wood/oak trees. District generate no longer
+     places those houses or labels. Dev server heap
+     raised to 8 GB (2 GB ran out of memory on the big build; 6 GB was tight with view-distance 24). Server list MOTD is
+     "NORDIA — Bygg ett liv / Städer • Företag • Jobb • Handel" with the NORDIA logo as `server-icon.png`. `/spawn` and
+     `/setspawn` are in SwedenCore; FastAsyncWorldEdit + FastAsyncVoxelSniper 3.2.5 are in `plugins/` (VoxelSniper
+     for terraforming; FAWE replaces EngineHub WorldEdit).
      Next ideas:
      Then maybe a town wall with round towers joining the districts. Not copied: block-entity contents (chest items,
-     sign text), entities (item frames, armor stands, NPCs), the church at 8104,-4114 (still only in oldspawn world).
+     sign text), entities (item frames, armor stands, NPCs).
+   - **2026-09-29 evening:** hill-world is `world` again (overworld restored from `world_kullar_2026-09-29` after a
+     coastal-blend experiment was reverted). Extra copy still at `world_kullar_2026-09-29`. Spawn `-1052 126 -1078`.
+     Terraforming: FastAsyncVoxelSniper 3.2.5 + FastAsyncWorldEdit (replaces EngineHub WorldEdit).
+   - **2026-09-29 late:** the owner started a fresh 26.2 `world` (previous ones kept as `world_old_kaos`, `world_new`).
+     The oldspawn hub was transplanted to origin `1567,930` in 9 tiles (`nordia_nh0`–`nh8`, `--band 90 --hub
+     -300,299,-292,292`, wider blend so the hill slopes into the lowland) and the church copied to `1866,1181`
+     (`nordia_kyrka`). Spawn is the castle at `1665 126 902`. Backup: `world_nyspawn_2026-09-29`.
+     Hollow hills filled with `--region hill-blend --fill-only` (tiles `hf*`/`hg*`, same box). The first version
+     started at the roof / tree-crown height and filled building and tree interiors; fixed by re-running the `nh*`
+     tiles and `kyrka` (pocket fill below the copy stays). Fill-only now starts from `Transplant.terrain` (soil
+     under roofs and crowns).
 2. **Main menu GUI** (`/meny`, NORDIA pass item) → then first-join onboarding (see decisions above) → spawn protection
    for the Nordhamn area in the plugin (currently only vanilla `spawn-protection=16`) and making the market stalls
    rentable server-owned properties.

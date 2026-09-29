@@ -8,6 +8,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * "Övre staden": a new quarter next to the old spawn castle, built as an overlay on the existing world. Streets follow
@@ -408,6 +410,7 @@ final class OldTown {
                 if (!Canvas.inXZ(u, v) || road(u, v) || Canvas.used(u, v) || BUILT[u - Canvas.MINX][v - Canvas.MINZ]) continue;
                 Nature.spawnTree(u, v, Terrain.h(u, v), R);
             }
+            if (Box.name.equals("districts")) continue;
             double[] p0 = s.pts().get(0), p1 = s.pts().get(1);
             int su = (int) Math.round(p0[0] + (p1[0] - p0[0]) * 0.25), sv = (int) Math.round(p0[1] + (p1[1] - p0[1]) * 0.25);
             Town.label(su + 0.5, Terrain.h(su, sv) + 4.5, sv + 0.5, s.name(), "", "#F3C969", 0.9f);
@@ -449,8 +452,506 @@ final class OldTown {
         layout();
         survey();
         streets();
-        lots();
-        houses();
+        if (!Box.name.equals("districts")) {
+            lots();
+            houses();
+        }
         furniture();
+    }
+
+    static final int CLEAR_PAD = 10;
+
+    /**
+     * Removes the generated district cottages, lot walls, leftover roofs/pillars and address labels, then grasses the
+     * lots. Custom trees (oak / spruce-wood) stay; the transplanted hub is not in these AABBs.
+     */
+    static void clearFromRegistry(Path file) throws IOException {
+        Canvas.overlay();
+        String json = Files.readString(file);
+        Matcher m = Pattern.compile("\"from\": \\[(-?\\d+), (-?\\d+)\\], \"to\": \\[(-?\\d+), (-?\\d+)\\]").matcher(json);
+        boolean[][] lot = new boolean[Canvas.SX][Canvas.SZ];
+        int lots = 0, cols = 0, cleared = 0;
+        while (m.find()) {
+            lots++;
+            int x0 = Integer.parseInt(m.group(1)) - CLEAR_PAD, z0 = Integer.parseInt(m.group(2)) - CLEAR_PAD;
+            int x1 = Integer.parseInt(m.group(3)) + CLEAR_PAD, z1 = Integer.parseInt(m.group(4)) + CLEAR_PAD;
+            for (int x = x0; x <= x1; x++)
+                for (int z = z0; z <= z1; z++) {
+                    int u = x - Box.worldX, v = z - Box.worldZ;
+                    if (!Canvas.inXZ(u, v)) continue;
+                    lot[u - Canvas.MINX][v - Canvas.MINZ] = true;
+                    cols++;
+                    cleared += clearColumn(x, z, true);
+                }
+        }
+        int stray = 0, strayCols = 0;
+        boolean[][] near = new boolean[Canvas.SX][Canvas.SZ];
+        for (int i = 0; i < Canvas.SX; i++)
+            for (int j = 0; j < Canvas.SZ; j++) {
+                if (!lot[i][j]) continue;
+                for (int a = -16; a <= 16; a++)
+                    for (int b = -16; b <= 16; b++) {
+                        int ii = i + a, jj = j + b;
+                        if (ii >= 0 && jj >= 0 && ii < Canvas.SX && jj < Canvas.SZ) near[ii][jj] = true;
+                    }
+            }
+        for (int u = Canvas.MINX; u <= Canvas.MAXX; u++)
+            for (int v = Canvas.MINZ; v <= Canvas.MAXZ; v++) {
+                int i = u - Canvas.MINX, j = v - Canvas.MINZ;
+                if (lot[i][j] || !near[i][j]) continue;
+                int n = clearStrayDecor(Box.worldX + u, Box.worldZ + v);
+                if (n > 0) {
+                    stray += n;
+                    strayCols++;
+                }
+            }
+        Canvas.ENTITIES.add("kill @e[tag=nordia_districts,distance=..500]");
+        Canvas.ENTITIES.add("kill @e[type=minecraft:text_display,distance=..500]");
+        System.out.println("districts-clear: " + cleared + " lot blocks in " + cols + " cols / " + lots
+                + " lots; stray " + stray + " blocks in " + strayCols + " cols");
+    }
+
+    static boolean keepTree(String b) {
+        if (b.contains("azalea")) return false;
+        if (b.endsWith("_leaves") || b.equals("vine") || b.equals("bee_nest")) return true;
+        if (b.startsWith("oak_") && (b.contains("log") || b.contains("wood"))) return true;
+        if (b.startsWith("cherry_") && (b.contains("log") || b.contains("wood"))) return true;
+        return b.equals("spruce_wood") || b.equals("stripped_spruce_wood");
+    }
+
+    static boolean pavement(String b) {
+        return b.equals("cobblestone") || b.equals("gravel") || b.equals("andesite") || b.equals("stone")
+               || b.equals("dirt_path") || b.equals("mossy_cobblestone") || b.equals("packed_mud");
+    }
+
+    static boolean houseLeftover(String b) {
+        if (keepTree(b) || b.equals("air") || b.equals("cave_air") || b.equals("water")) return false;
+        if (pavement(b)) return false;
+        if (b.equals("grass_block") || b.equals("dirt") || b.equals("coarse_dirt") || b.equals("podzol")
+            || b.equals("rooted_dirt") || b.equals("mud") || b.equals("clay") || b.equals("sand")
+            || b.equals("farmland") || b.equals("moss_block")) return false;
+        if (B.isPlant(b)) return true;
+        return b.endsWith("_wall") || b.endsWith("_fence") || b.endsWith("_stairs") || b.endsWith("_slab")
+               || b.endsWith("_door") || b.endsWith("_trapdoor") || b.endsWith("_fence_gate") || b.endsWith("_pane")
+               || b.endsWith("_sign") || b.contains("banner") || b.contains("lantern") || b.contains("planks")
+               || b.contains("stone_brick") || b.contains("blackstone") || b.contains("glass")
+               || b.equals("lightning_rod") || b.equals("chain") || b.equals("iron_chain") || b.equals("ladder")
+               || b.equals("barrel") || b.equals("chest") || b.equals("decorated_pot") || b.equals("campfire")
+               || b.equals("hay_block") || b.equals("flower_pot") || b.contains("candle") || b.equals("red_wool")
+               || b.equals("red_concrete") || b.equals("white_concrete") || b.equals("spruce_log")
+               || b.equals("stripped_spruce_log") || b.equals("dark_oak_log") || b.equals("stripped_dark_oak_log")
+               || b.equals("birch_log") || b.equals("cobbled_deepslate") || b.equals("polished_andesite")
+               || b.equals("polished_andesite_slab") || b.equals("chiseled_stone_bricks") || b.equals("bricks")
+               || b.equals("brick_stairs") || b.equals("brick_slab") || b.equals("brick_wall")
+               || b.equals("iron_bars") || b.equals("crafting_table") || b.equals("furnace")
+               || b.equals("smoker") || b.equals("blast_furnace") || b.equals("loom") || b.equals("cartography_table")
+               || b.equals("fletching_table") || b.equals("smithing_table") || b.equals("grindstone")
+               || b.equals("stonecutter") || b.equals("composter") || b.equals("cauldron") || b.equals("anvil")
+               || b.equals("bookshelf") || b.equals("chiseled_bookshelf") || b.equals("lectern")
+               || b.startsWith("potted_");
+    }
+
+    /** Highest natural / paved block, skipping leftover house pieces and plants. */
+    static int trueGround(int x, int z) {
+        int top = Terrain.nat.surface(x, z);
+        if (top == WorldReader.MISSING) return Transplant.terrain(Terrain.nat, x, z);
+        int relTop = top - 64;
+        int air = 0;
+        for (int y = relTop; y >= relTop - 48 && y >= Canvas.MINY; y--) {
+            String raw = Terrain.nat.block(x, y + 64, z);
+            if (raw == null) continue;
+            String b = B.base(raw);
+            if (b.equals("air") || b.equals("cave_air") || B.isPlant(b)) {
+                if (++air > 20) break;
+                continue;
+            }
+            air = 0;
+            if (keepTree(b) || houseLeftover(b)) continue;
+            return y;
+        }
+        return Transplant.terrain(Terrain.nat, x, z);
+    }
+
+    static int neighborGrade(int x, int z) {
+        int[] hs = new int[12];
+        int n = 0;
+        for (int d : new int[] {3, 6, 9}) {
+            for (int[] p : new int[][] {{d, 0}, {-d, 0}, {0, d}, {0, -d}}) {
+                int h = trueGround(x + p[0], z + p[1]);
+                if (h > Canvas.SEA) hs[n++] = h;
+            }
+        }
+        if (n == 0) return trueGround(x, z);
+        java.util.Arrays.sort(hs, 0, n);
+        return hs[n / 2];
+    }
+
+    static boolean streetHere(int x, int z, int g) {
+        int paved = 0;
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                String raw = Terrain.nat.block(x + dx, g + 64, z + dz);
+                if (raw != null && pavement(B.base(raw))) paved++;
+            }
+        return paved >= 3;
+    }
+
+    static int countSolid(int x, int z, int g, int up) {
+        int n = 0;
+        for (int y = g - 1; y <= g + up; y++) {
+            String raw = Terrain.nat.block(x, y + 64, z);
+            if (raw == null) continue;
+            String b = B.base(raw);
+            if (b.equals("air") || b.equals("cave_air") || B.isPlant(b) || keepTree(b)) continue;
+            n++;
+        }
+        return n;
+    }
+
+    static int clearColumn(int x, int z, boolean repairGround) {
+        int u = x - Box.worldX, v = z - Box.worldZ;
+        if (!Canvas.inXZ(u, v)) return 0;
+        int found = trueGround(x, z);
+        int grade = neighborGrade(x, z);
+        int soil = found;
+        int n = 0;
+        if (repairGround && grade > found + 1) {
+            Canvas.fill(u, found + 1, v, u, grade - 1, v, "dirt");
+            Canvas.set(u, grade, v, "grass_block");
+            soil = grade;
+            n += grade - found;
+        }
+        for (int y = soil + 1; y <= Canvas.MAXY; y++) {
+            String b = B.base(Canvas.world(u, y, v));
+            if (b.equals("air") || b.equals("cave_air") || keepTree(b)) continue;
+            Canvas.set(u, y, v, "air");
+            n++;
+        }
+        if (!repairGround) return n;
+        String ground = B.base(Canvas.world(u, soil, v));
+        if (houseLeftover(ground) || ground.equals("podzol") || ground.equals("farmland")
+            || ground.equals("coarse_dirt") || (pavement(ground) && !streetHere(x, z, soil))) {
+            Canvas.set(u, soil, v, "grass_block");
+            n++;
+        }
+        return n;
+    }
+
+    /** Isolated walls, lantern posts and floating roof bits that sat outside the lot boxes. */
+    static int clearStrayDecor(int x, int z) {
+        int u = x - Box.worldX, v = z - Box.worldZ;
+        if (!Canvas.inXZ(u, v)) return 0;
+        int g = trueGround(x, z);
+        if (countSolid(x, z, g, 28) >= 14) return 0;
+        boolean decor = false;
+        for (int y = g + 1; y <= g + 10 && y <= Canvas.MAXY; y++) {
+            String b = B.base(Canvas.world(u, y, v));
+            if (b.endsWith("_wall") || b.contains("lantern") || b.endsWith("_fence") || b.endsWith("_stairs")
+                || b.endsWith("_slab") || b.equals("lightning_rod") || b.equals("red_wool") || b.equals("red_concrete")
+                || b.contains("blackstone") || b.equals("dark_oak_planks") || b.equals("dark_oak_log"))
+                decor = true;
+        }
+        if (!decor) return 0;
+        return clearColumn(x, z, true);
+    }
+
+    static final int WALL_PAD = 8;
+    static final int HUB_X = -1052, HUB_Z = -1078, HUB_KEEP = 78;
+
+    /**
+     * Live {@code fill … replace} at every former lot. Far lots lose stone-brick house shells and towers; lots next to
+     * the original hub only lose generated wall posts ({@code *_wall}, lanterns) so the church/shop/castle stay.
+     */
+    static List<Canvas.Cmd> leftoverWallFills(Path file) throws IOException {
+        String json = Files.readString(file);
+        Matcher m = Pattern.compile("\"from\": \\[(-?\\d+), (-?\\d+)\\], \"to\": \\[(-?\\d+), (-?\\d+)\\]").matcher(json);
+        String[] far = {
+                "stone_bricks", "cracked_stone_bricks", "mossy_stone_bricks", "chiseled_stone_bricks",
+                "stone_brick_slab", "stone_brick_stairs", "stone_brick_wall", "mossy_stone_brick_wall",
+                "cobblestone_wall", "mossy_cobblestone_wall", "andesite_wall", "granite_wall",
+                "cobbled_deepslate", "polished_blackstone_bricks", "polished_blackstone_brick_wall",
+                "polished_blackstone_brick_stairs", "polished_blackstone_brick_slab",
+                "lantern", "soul_lantern", "lightning_rod", "red_wool", "red_concrete",
+                "red_stained_glass_pane", "brick_wall"};
+        String[] near = {
+                "stone_brick_wall", "mossy_stone_brick_wall", "cobblestone_wall", "mossy_cobblestone_wall",
+                "andesite_wall", "granite_wall", "brick_wall", "polished_blackstone_brick_wall",
+                "lantern", "soul_lantern"};
+        List<Canvas.Cmd> cmds = new ArrayList<>();
+        int lots = 0, farLots = 0, nearLots = 0;
+        while (m.find()) {
+            lots++;
+            int x0 = Integer.parseInt(m.group(1)) - WALL_PAD, z0 = Integer.parseInt(m.group(2)) - WALL_PAD;
+            int x1 = Integer.parseInt(m.group(3)) + WALL_PAD, z1 = Integer.parseInt(m.group(4)) + WALL_PAD;
+            boolean hub = hubNear(x0, z0, x1, z1);
+            if (hub) nearLots++;
+            else farLots++;
+            addFills(cmds, x0, z0, x1, z1, hub ? near : far);
+            if (hub) {
+                int ix0 = Integer.parseInt(m.group(1)) - 3, iz0 = Integer.parseInt(m.group(2)) - 3;
+                int ix1 = Integer.parseInt(m.group(3)) + 3, iz1 = Integer.parseInt(m.group(4)) + 3;
+                addFills(cmds, ix0, iz0, ix1, iz1, far);
+            }
+        }
+        System.out.println("leftover-walls: " + cmds.size() + " fill-replace commands, " + lots + " lots ("
+                + farLots + " far / " + nearLots + " next to hub)");
+        return cmds;
+    }
+
+    static void addFills(List<Canvas.Cmd> cmds, int x0, int z0, int x1, int z1, String[] mats) {
+        for (int y0 = 92; y0 <= 168; y0 += 24) {
+            int y1 = y0 + 23;
+            long vol = (long) (x1 - x0 + 1) * (z1 - z0 + 1) * (y1 - y0 + 1);
+            if (vol > 32768) throw new IllegalStateException("fill box too large at " + x0 + "," + z0);
+            for (String mat : mats)
+                cmds.add(new Canvas.Cmd("fill " + x0 + " " + y0 + " " + z0 + " " + x1 + " " + y1 + " " + z1
+                        + " air replace minecraft:" + mat, 1));
+        }
+    }
+
+    static boolean hubNear(int x0, int z0, int x1, int z1) {
+        int dx = HUB_X < x0 ? x0 - HUB_X : HUB_X > x1 ? HUB_X - x1 : 0;
+        int dz = HUB_Z < z0 ? z0 - HUB_Z : HUB_Z > z1 ? HUB_Z - z1 : 0;
+        return Math.hypot(dx, dz) < HUB_KEEP;
+    }
+
+    static final int STREET_HUB_KEEP = 42;
+    static final String[] STREET_PAVE = {
+            "cobblestone", "mossy_cobblestone", "dirt_path", "packed_mud", "gravel", "andesite"};
+    static final String[] STREET_STONE = {"stone"};
+
+    /**
+     * Removes the generated district roads: cobblestone retaining walls and stone/andesite/gravel paving. Those were
+     * left behind when the cottages came down and look like cliffs. Original hub cobble (castle/shop) is skipped.
+     */
+    static List<Canvas.Cmd> leftoverStreetFills(Path file) throws IOException {
+        STREETS.clear();
+        districts();
+        boolean[][] mark = new boolean[Canvas.SX][Canvas.SZ];
+        int roadCells = 0;
+        for (Street s : STREETS) {
+            for (double[] p : River.spline(s.pts(), 0, 1)) {
+                for (int du = -4; du <= 4; du++)
+                    for (int dv = -4; dv <= 4; dv++) {
+                        if (Math.hypot(du, dv) > 3.4) continue;
+                        int u = (int) Math.round(p[0]) + du, v = (int) Math.round(p[1]) + dv;
+                        if (!Canvas.inXZ(u, v)) continue;
+                        int wx = Box.worldX + u, wz = Box.worldZ + v;
+                        if (Math.hypot(wx - HUB_X, wz - HUB_Z) < STREET_HUB_KEEP) continue;
+                        int i = u - Canvas.MINX, j = v - Canvas.MINZ;
+                        if (!mark[i][j]) {
+                            mark[i][j] = true;
+                            roadCells++;
+                        }
+                    }
+            }
+        }
+        Matcher m = Pattern.compile("\"from\": \\[(-?\\d+), (-?\\d+)\\], \"to\": \\[(-?\\d+), (-?\\d+)\\]")
+                .matcher(Files.readString(file));
+        while (m.find()) {
+            int x0 = Integer.parseInt(m.group(1)) - 4, z0 = Integer.parseInt(m.group(2)) - 4;
+            int x1 = Integer.parseInt(m.group(3)) + 4, z1 = Integer.parseInt(m.group(4)) + 4;
+            for (int x = x0; x <= x1; x++)
+                for (int z = z0; z <= z1; z++) {
+                    if (Math.hypot(x - HUB_X, z - HUB_Z) < STREET_HUB_KEEP) continue;
+                    int u = x - Box.worldX, v = z - Box.worldZ;
+                    if (!Canvas.inXZ(u, v)) continue;
+                    int i = u - Canvas.MINX, j = v - Canvas.MINZ;
+                    if (!mark[i][j]) {
+                        mark[i][j] = true;
+                        roadCells++;
+                    }
+                }
+        }
+        boolean[][] used = new boolean[Canvas.SX][Canvas.SZ];
+        List<int[]> boxes = new ArrayList<>();
+        for (int j = 0; j < Canvas.SZ; j++)
+            for (int i = 0; i < Canvas.SX; i++) {
+                if (!mark[i][j] || used[i][j]) continue;
+                int i1 = i;
+                while (i1 + 1 < Canvas.SX && mark[i1 + 1][j] && !used[i1 + 1][j]) i1++;
+                int j1 = j;
+                grow:
+                while (j1 + 1 < Canvas.SZ) {
+                    for (int ii = i; ii <= i1; ii++) if (!mark[ii][j1 + 1] || used[ii][j1 + 1]) break grow;
+                    j1++;
+                }
+                for (int jj = j; jj <= j1; jj++)
+                    for (int ii = i; ii <= i1; ii++) used[ii][jj] = true;
+                boxes.add(new int[] {
+                        Box.worldX + Canvas.MINX + i, Box.worldZ + Canvas.MINZ + j,
+                        Box.worldX + Canvas.MINX + i1, Box.worldZ + Canvas.MINZ + j1});
+            }
+        List<Canvas.Cmd> cmds = new ArrayList<>();
+        for (int[] b : boxes) {
+            addFillsRange(cmds, b[0], b[1], b[2], b[3], 64, 180, STREET_PAVE);
+            addFillsRange(cmds, b[0], b[1], b[2], b[3], 104, 151, STREET_STONE);
+        }
+        System.out.println("leftover-streets: " + cmds.size() + " fill-replace commands, " + roadCells
+                + " cells in " + boxes.size() + " boxes");
+        return cmds;
+    }
+
+    static void addFillsRange(List<Canvas.Cmd> cmds, int x0, int z0, int x1, int z1, int yMin, int yMax, String[] mats) {
+        for (int y0 = yMin; y0 <= yMax; y0 += 24) {
+            int y1 = Math.min(yMax, y0 + 23);
+            long vol = (long) (x1 - x0 + 1) * (z1 - z0 + 1) * (y1 - y0 + 1);
+            if (vol > 32768) {
+                int mid = (x0 + x1) / 2;
+                addFillsRange(cmds, x0, z0, mid, z1, yMin, yMax, mats);
+                addFillsRange(cmds, mid + 1, z0, x1, z1, yMin, yMax, mats);
+                return;
+            }
+            for (String mat : mats)
+                cmds.add(new Canvas.Cmd("fill " + x0 + " " + y0 + " " + z0 + " " + x1 + " " + y1 + " " + z1
+                        + " air replace minecraft:" + mat, 1));
+        }
+    }
+
+    static boolean[][] markDistrictLeftovers(Path file, int halo) throws IOException {
+        STREETS.clear();
+        districts();
+        boolean[][] mark = new boolean[Canvas.SX][Canvas.SZ];
+        for (Street s : STREETS) {
+            for (double[] p : River.spline(s.pts(), 0, 1)) {
+                for (int du = -halo; du <= halo; du++)
+                    for (int dv = -halo; dv <= halo; dv++) {
+                        if (Math.hypot(du, dv) > halo - 0.2) continue;
+                        int u = (int) Math.round(p[0]) + du, v = (int) Math.round(p[1]) + dv;
+                        if (!Canvas.inXZ(u, v)) continue;
+                        int wx = Box.worldX + u, wz = Box.worldZ + v;
+                        if (Math.hypot(wx - HUB_X, wz - HUB_Z) < STREET_HUB_KEEP) continue;
+                        mark[u - Canvas.MINX][v - Canvas.MINZ] = true;
+                    }
+            }
+        }
+        Matcher m = Pattern.compile("\"from\": \\[(-?\\d+), (-?\\d+)\\], \"to\": \\[(-?\\d+), (-?\\d+)\\]")
+                .matcher(Files.readString(file));
+        while (m.find()) {
+            int x0 = Integer.parseInt(m.group(1)) - halo, z0 = Integer.parseInt(m.group(2)) - halo;
+            int x1 = Integer.parseInt(m.group(3)) + halo, z1 = Integer.parseInt(m.group(4)) + halo;
+            for (int x = x0; x <= x1; x++)
+                for (int z = z0; z <= z1; z++) {
+                    if (Math.hypot(x - HUB_X, z - HUB_Z) < STREET_HUB_KEEP) continue;
+                    int u = x - Box.worldX, v = z - Box.worldZ;
+                    if (!Canvas.inXZ(u, v)) continue;
+                    mark[u - Canvas.MINX][v - Canvas.MINZ] = true;
+                }
+        }
+        return mark;
+    }
+
+    static boolean soil(String b) {
+        return b.equals("grass_block") || b.equals("dirt") || b.equals("coarse_dirt") || b.equals("rooted_dirt")
+               || b.equals("podzol") || b.equals("farmland") || b.equals("mud");
+    }
+
+    static boolean airish(String b) {
+        return b.equals("air") || b.equals("cave_air") || B.isPlant(b) || b.equals("snow") || b.equals("moss_carpet");
+    }
+
+    /**
+     * After the street cobble came down: remove floating grass/dirt, then cap exposed dirt with grass so the ground
+     * reads as one surface.
+     */
+    static void leftoverGroundFix(Path file) throws IOException {
+        Canvas.overlay();
+        boolean[][] mark = markDistrictLeftovers(file, 6);
+        int[][] surf = new int[Canvas.SX][Canvas.SZ];
+        int floated = 0, grassed = 0, filled = 0, cols = 0;
+        for (int u = Canvas.MINX; u <= Canvas.MAXX; u++)
+            for (int v = Canvas.MINZ; v <= Canvas.MAXZ; v++) {
+                int i = u - Canvas.MINX, j = v - Canvas.MINZ;
+                if (!mark[i][j]) {
+                    surf[i][j] = Integer.MIN_VALUE;
+                    continue;
+                }
+                cols++;
+                int[] r = fixGroundColumn(u, v);
+                surf[i][j] = r[0];
+                floated += r[1];
+                grassed += r[2];
+            }
+        for (int u = Canvas.MINX; u <= Canvas.MAXX; u++)
+            for (int v = Canvas.MINZ; v <= Canvas.MAXZ; v++) {
+                int i = u - Canvas.MINX, j = v - Canvas.MINZ;
+                if (!mark[i][j] || surf[i][j] == Integer.MIN_VALUE) continue;
+                int n = 0, sum = 0;
+                for (int a = -3; a <= 3; a++)
+                    for (int b = -3; b <= 3; b++) {
+                        if (a == 0 && b == 0) continue;
+                        int ii = i + a, jj = j + b;
+                        if (ii < 0 || jj < 0 || ii >= Canvas.SX || jj >= Canvas.SZ) continue;
+                        if (surf[ii][jj] == Integer.MIN_VALUE) continue;
+                        sum += surf[ii][jj];
+                        n++;
+                    }
+                if (n < 4) continue;
+                int target = sum / n;
+                int g = surf[i][j];
+                if (target > g + 1 && target - g <= 4) {
+                    for (int y = g + 1; y < target; y++) Canvas.set(u, y, v, "dirt");
+                    Canvas.set(u, target, v, "grass_block");
+                    filled += target - g;
+                    surf[i][j] = target;
+                }
+            }
+        System.out.println("leftover-ground: " + cols + " cols, aired " + floated + " floating, grassed " + grassed
+                + ", filled " + filled);
+    }
+
+    /** Returns {surfaceY, floatedCount, grassedCount}. */
+    static int[] fixGroundColumn(int u, int v) {
+        int top = Terrain.nat.surface(Box.worldX + u, Box.worldZ + v);
+        int relTop = top == WorldReader.MISSING ? Canvas.MAXY : Math.min(Canvas.MAXY, top - 64 + 4);
+        String[] col = new String[Canvas.SY];
+        for (int y = Canvas.MINY; y <= relTop; y++) {
+            if (!Canvas.in(u, y, v)) continue;
+            col[y - Canvas.MINY] = B.base(Canvas.world(u, y, v));
+        }
+        int floated = 0;
+        for (int pass = 0; pass < 16; pass++) {
+            int n = 0;
+            for (int y = relTop; y > Canvas.MINY; y--) {
+                int i = y - Canvas.MINY;
+                String b = col[i];
+                if (b == null || keepTree(b) || !(soil(b) || B.isPlant(b) || b.equals("snow") || b.equals("moss_carpet")))
+                    continue;
+                String bel = col[i - 1];
+                if (bel == null) bel = "air";
+                if (airish(bel) || bel.equals("air")) {
+                    col[i] = "air";
+                    n++;
+                }
+            }
+            floated += n;
+            if (n == 0) break;
+        }
+        int g = Integer.MIN_VALUE;
+        for (int y = relTop; y >= Canvas.MINY; y--) {
+            String b = col[y - Canvas.MINY];
+            if (b == null || b.equals("air") || b.equals("cave_air") || B.isPlant(b) || b.equals("snow")
+                || b.equals("moss_carpet")) continue;
+            if (keepTree(b)) continue;
+            g = y;
+            break;
+        }
+        int grassed = 0;
+        if (g != Integer.MIN_VALUE) {
+            String ground = col[g - Canvas.MINY];
+            if (ground != null && (ground.equals("dirt") || ground.equals("coarse_dirt") || ground.equals("rooted_dirt")
+                    || ground.equals("podzol") || ground.equals("farmland") || ground.equals("mud"))) {
+                col[g - Canvas.MINY] = "grass_block";
+                grassed = 1;
+            }
+        }
+        for (int y = Canvas.MINY; y <= relTop; y++) {
+            String now = col[y - Canvas.MINY];
+            if (now == null) continue;
+            String orig = B.base(Canvas.world(u, y, v));
+            if (!now.equals(orig)) Canvas.set(u, y, v, now);
+        }
+        return new int[] {g, floated, grassed};
     }
 }

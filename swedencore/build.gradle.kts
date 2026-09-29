@@ -77,5 +77,16 @@ tasks.assemble {
 
 tasks.runServer {
     minecraftVersion(libs.versions.minecraft.get())
-    jvmArgs("-Xms2G", "-Xmx6G", "-Dcom.mojang.eula.agree=true")
+    jvmArgs("-Xms8G", "-Xmx8G", "-Dcom.mojang.eula.agree=true", "-Djava.net.preferIPv4Stack=true")
+    downloadPlugins {
+        // FAWE replaces EngineHub WorldEdit; FastAsyncVoxelSniper needs FAWE (not both WorldEdits).
+        url("https://ci.athion.net/job/FastAsyncWorldEdit/lastSuccessfulBuild/artifact/artifacts/FastAsyncWorldEdit-Paper-2.15.5-SNAPSHOT.jar")
+        url("https://github.com/IntellectualSites/fastasyncvoxelsniper/releases/download/3.2.5/fastasyncvoxelsniper-3.2.5.jar")
+    }
+    doFirst {
+        val icon = rootProject.layout.projectDirectory.file("branding/server-icon.png").asFile
+        if (icon.isFile) {
+            icon.copyTo(layout.projectDirectory.dir("run").file("server-icon.png").asFile, overwrite = true)
+        }
+    }
 }
