@@ -115,6 +115,10 @@ public final class SwedenCorePlugin extends JavaPlugin {
         ConnectionListener connectionListener = new ConnectionListener(core, sessions, messages, tasks, joinHooks, quitHooks);
         getServer().getPluginManager().registerEvents(connectionListener, this);
 
+        se.nordia.swedencore.paper.world.BuildWorld buildWorld = new se.nordia.swedencore.paper.world.BuildWorld(getLogger());
+        buildWorld.ensureLoaded();
+        getServer().getPluginManager().registerEvents(new se.nordia.swedencore.paper.world.BuildWorldListener(), this);
+
         // ---- skills
         saveResourceIfMissing("skills.yml");
         XpTables xpTables = new XpTables(YamlConfiguration.loadConfiguration(new File(getDataFolder(), "skills.yml")), getLogger());
@@ -274,6 +278,7 @@ public final class SwedenCorePlugin extends JavaPlugin {
             new TransportCommands(services).register(event.registrar());
             new se.nordia.swedencore.paper.command.ShareCommands(services).register(event.registrar());
             new se.nordia.swedencore.paper.command.SpawnCommands(services).register(event.registrar());
+            new se.nordia.swedencore.paper.command.BuildWorldCommands(services, buildWorld).register(event.registrar());
             new AdminCommands(services, () -> localization.reload(getClassLoader(), langDir)).register(event.registrar());
         });
 

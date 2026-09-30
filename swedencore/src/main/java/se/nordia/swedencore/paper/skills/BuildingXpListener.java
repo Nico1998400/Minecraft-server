@@ -54,7 +54,8 @@ public final class BuildingXpListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
-        if (player.getGameMode() != GameMode.SURVIVAL || !activity.isActive(player.getUniqueId())) {
+        if (se.nordia.swedencore.paper.world.BuildWorld.isBuildWorld(player.getWorld())
+                || player.getGameMode() != GameMode.SURVIVAL || !activity.isActive(player.getUniqueId())) {
             return;
         }
         Block block = event.getBlockPlaced();

@@ -34,6 +34,9 @@ public final class GatheringListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
+        if (se.nordia.swedencore.paper.world.BuildWorld.isBuildWorld(event.getBlock().getWorld())) {
+            return;
+        }
         Block block = event.getBlock();
         Material type = block.getType();
         boolean wasPlaced = tables.isTracked(type) && placed.isPlaced(block);
@@ -75,6 +78,9 @@ public final class GatheringListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onHarvest(PlayerHarvestBlockEvent event) {
+        if (se.nordia.swedencore.paper.world.BuildWorld.isBuildWorld(event.getPlayer().getWorld())) {
+            return;
+        }
         Integer xp = tables.herbalismHarvest(event.getHarvestedBlock().getType());
         if (xp != null && !event.getItemsHarvested().isEmpty()) {
             tracker.award(event.getPlayer(), Skill.HERBALISM, xp, false);
@@ -84,6 +90,9 @@ public final class GatheringListener implements Listener {
     /** Fishing requires recent real input: AFK fish farms are the classic exploit. */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onFish(PlayerFishEvent event) {
+        if (se.nordia.swedencore.paper.world.BuildWorld.isBuildWorld(event.getPlayer().getWorld())) {
+            return;
+        }
         if (event.getState() != PlayerFishEvent.State.CAUGHT_FISH || !(event.getCaught() instanceof Item item)) {
             return;
         }

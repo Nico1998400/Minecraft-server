@@ -61,6 +61,9 @@ public final class WorkSiteListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onDrop(BlockDropItemEvent event) {
         Player player = event.getPlayer();
+        if (se.nordia.swedencore.paper.world.BuildWorld.isBuildWorld(player.getWorld())) {
+            return;
+        }
         Employee employee = work.dutyOf(player.getUniqueId()).orElse(null);
         if (employee == null || event.getItems().isEmpty()) {
             return;

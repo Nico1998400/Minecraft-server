@@ -91,6 +91,9 @@ done. Remaining: stock market / exchange (#43).
     spawn building. **Rewards are reputation or items, never money** (no new mint source).
   - Spawn buildings map to systems: town hall = properties, job centre = jobs/contracts, bank = loans/shares,
     warehouse = logistics, market stalls = rentable player shops (not an auction house).
+- **Build world** (2026-09-30): flat creative world `bygg`, created/loaded on startup (`paper.world.BuildWorld`).
+  `/bygg` and `/tillbaka` are op-only (`nordia.admin.buildworld`, re-checked in `BuildWorldListener` on every teleport).
+  Peaceful, no mobs/weather/fire/time, and skill XP + job progress are disabled in it. Not yet: schematic copy to the main world.
 
 ## Next steps (exact)
 1. **Nordhamn polish**: terrain pass done (2026-09-28): geology toolkit, river rebuilt (no spills by design: falls
