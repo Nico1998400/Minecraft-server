@@ -46,7 +46,6 @@ public final class BuildWorld {
             }
             world.setSpawnLocation(0, world.getHighestBlockYAt(0, 0) + 1, 0);
             log.info("Created build world '" + NAME + "'");
-            plantTrees(false);
         }
         world.setDifficulty(Difficulty.PEACEFUL);
         world.setGameRule(GameRules.SPAWN_MOBS, false);
