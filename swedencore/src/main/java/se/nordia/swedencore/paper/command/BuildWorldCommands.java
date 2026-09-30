@@ -1,6 +1,7 @@
 package se.nordia.swedencore.paper.command;
 
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -9,9 +10,13 @@ import se.nordia.swedencore.paper.Permissions;
 import se.nordia.swedencore.paper.world.BuildWorld;
 
 import java.util.List;
+import java.util.Locale;
 
-/** {@code /bygg} and {@code /tillbaka}: op-only travel between the main world and the flat build world. */
+/** {@code /world bygg} and {@code /world nordia}: op-only travel between the main world and the flat build world. */
 public final class BuildWorldCommands {
+
+    private static final String BUILD = "bygg";
+    private static final String MAIN = "nordia";
 
     private final CommandServices svc;
     private final BuildWorld buildWorld;
@@ -22,44 +27,49 @@ public final class BuildWorldCommands {
     }
 
     public void register(Commands commands) {
-        commands.register(enter(), "Go to the build world / Gå till byggvärlden", List.of("buildworld"));
-        commands.register(leave(), "Return from the build world / Gå tillbaka från byggvärlden", List.of("buildback"));
+        commands.register(world(), "Travel between Nordia and the build world / Res mellan Nordia och byggvärlden", List.of());
     }
 
-    private LiteralCommandNode<CommandSourceStack> enter() {
-        return Commands.literal("bygg")
+    private LiteralCommandNode<CommandSourceStack> world() {
+        return Commands.literal("world")
                 .requires(CommandServices.permission(Permissions.ADMIN_BUILDWORLD))
+                .then(Commands.argument("varld", StringArgumentType.word())
+                        .suggests((c, b) -> {
+                            String remaining = b.getRemainingLowerCase();
+                            for (String name : List.of(BUILD, MAIN)) {
+                                if (name.startsWith(remaining)) {
+                                    b.suggest(name);
+                                }
+                            }
+                            return b.buildFuture();
+                        })
+                        .executes(c -> {
+                            Player player = svc.requirePlayer(c.getSource());
+                            if (player == null) {
+                                return Command.SINGLE_SUCCESS;
+                            }
+                            if (!player.hasPermission(Permissions.ADMIN_BUILDWORLD)) {
+                                svc.messages().send(player, "buildworld.no_permission");
+                                return Command.SINGLE_SUCCESS;
+                            }
+                            switch (StringArgumentType.getString(c, "varld").toLowerCase(Locale.ROOT)) {
+                                case BUILD -> {
+                                    if (buildWorld.enter(player)) {
+                                        svc.messages().send(player, "buildworld.entered");
+                                    } else {
+                                        svc.messages().send(player, "buildworld.unavailable");
+                                    }
+                                }
+                                case MAIN -> {
+                                    buildWorld.leave(player);
+                                    svc.messages().send(player, "buildworld.left");
+                                }
+                                default -> svc.messages().send(player, "buildworld.usage");
+                            }
+                            return Command.SINGLE_SUCCESS;
+                        }))
                 .executes(c -> {
-                    Player player = svc.requirePlayer(c.getSource());
-                    if (player == null) {
-                        return Command.SINGLE_SUCCESS;
-                    }
-                    if (!player.hasPermission(Permissions.ADMIN_BUILDWORLD)) {
-                        svc.messages().send(player, "buildworld.no_permission");
-                    } else if (buildWorld.enter(player)) {
-                        svc.messages().send(player, "buildworld.entered");
-                    } else {
-                        svc.messages().send(player, "buildworld.unavailable");
-                    }
-                    return Command.SINGLE_SUCCESS;
-                })
-                .build();
-    }
-
-    private LiteralCommandNode<CommandSourceStack> leave() {
-        return Commands.literal("tillbaka")
-                .requires(CommandServices.permission(Permissions.ADMIN_BUILDWORLD))
-                .executes(c -> {
-                    Player player = svc.requirePlayer(c.getSource());
-                    if (player == null) {
-                        return Command.SINGLE_SUCCESS;
-                    }
-                    if (!player.hasPermission(Permissions.ADMIN_BUILDWORLD)) {
-                        svc.messages().send(player, "buildworld.no_permission");
-                    } else {
-                        buildWorld.leave(player);
-                        svc.messages().send(player, "buildworld.left");
-                    }
+                    svc.messages().send(c.getSource().getSender(), "buildworld.usage");
                     return Command.SINGLE_SUCCESS;
                 })
                 .build();

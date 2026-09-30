@@ -19,7 +19,7 @@ permissions:
       nordia.admin.spawn: true
       nordia.admin.buildworld: true
   nordia.admin.buildworld:
-    description: Enter the flat build world (/bygg, /tillbaka)
+    description: Use /world to travel to the flat build world
     default: op
   nordia.admin.property:
     description: Define and delete properties
