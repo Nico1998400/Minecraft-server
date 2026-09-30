@@ -12,11 +12,12 @@ import se.nordia.swedencore.paper.world.BuildWorld;
 import java.util.List;
 import java.util.Locale;
 
-/** {@code /world bygg} and {@code /world nordia}: op-only travel between the main world and the flat build world. */
+/** {@code /world bygg}, {@code /world nordia} and {@code /world trad}: op-only travel between the main world and the flat build world. */
 public final class BuildWorldCommands {
 
     private static final String BUILD = "bygg";
     private static final String MAIN = "nordia";
+    private static final String TREES = "trad";
 
     private final CommandServices svc;
     private final BuildWorld buildWorld;
@@ -36,7 +37,7 @@ public final class BuildWorldCommands {
                 .then(Commands.argument("varld", StringArgumentType.word())
                         .suggests((c, b) -> {
                             String remaining = b.getRemainingLowerCase();
-                            for (String name : List.of(BUILD, MAIN)) {
+                            for (String name : List.of(BUILD, MAIN, TREES)) {
                                 if (name.startsWith(remaining)) {
                                     b.suggest(name);
                                 }
@@ -63,6 +64,14 @@ public final class BuildWorldCommands {
                                 case MAIN -> {
                                     buildWorld.leave(player);
                                     svc.messages().send(player, "buildworld.left");
+                                }
+                                case TREES -> {
+                                    if (BuildWorld.isBuildWorld(player.getWorld())) {
+                                        buildWorld.plantTrees(true);
+                                        svc.messages().send(player, "buildworld.trees");
+                                    } else {
+                                        svc.messages().send(player, "buildworld.trees_elsewhere");
+                                    }
                                 }
                                 default -> svc.messages().send(player, "buildworld.usage");
                             }

@@ -46,6 +46,7 @@ public final class BuildWorld {
             }
             world.setSpawnLocation(0, world.getHighestBlockYAt(0, 0) + 1, 0);
             log.info("Created build world '" + NAME + "'");
+            plantTrees(false);
         }
         world.setDifficulty(Difficulty.PEACEFUL);
         world.setGameRule(GameRules.SPAWN_MOBS, false);
@@ -58,6 +59,14 @@ public final class BuildWorld {
         world.setThundering(false);
         world.setTime(6000);
         return world;
+    }
+
+    /** Plants the tree showcase row east of spawn. With {@code clear}, replaces any earlier row. */
+    public void plantTrees(boolean clear) {
+        World build = world();
+        if (build != null) {
+            new BuildTrees(build).plant(clear);
+        }
     }
 
     public World world() {
