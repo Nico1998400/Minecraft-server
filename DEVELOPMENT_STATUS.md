@@ -93,7 +93,7 @@ done. Remaining: stock market / exchange (#43).
     warehouse = logistics, market stalls = rentable player shops (not an auction house).
 - **Build world** (2026-09-30): flat creative world `bygg`, created/loaded on startup (`paper.world.BuildWorld`).
   `/world bygg` and `/world nordia` are op-only (`nordia.admin.buildworld`, re-checked in `BuildWorldListener` on every teleport).
-  Peaceful, no mobs/weather/fire/time, and skill XP + job progress are disabled in it. Tree showcase (11 hand-shaped trees, `paper.world.BuildTrees`) is planted east of spawn (x 16..316, z 16) only by `/world trad` (not automatically). Not yet: schematic copy to the main world.
+  Peaceful, no mobs/weather/fire/time, and skill XP + job progress are disabled in it. Tree showcase (11 hand-shaped trees, `paper.world.BuildTrees`) is planted east of spawn (x 16..316, z 16) only by `/world trad` (not automatically). House showcase: `/world hus` builds 10 livable houses (long house, timber town house, stone cottage, Falu-red cottage, manor with tower, inn, stilt house, round tower, smithy, bakery) south of the trees (street z 54, lots z 62..88, x 16..380) via `paper.world.BuildHouses`/`HouseKit`; untested in-game, expect tweaks. Not yet: schematic copy to the main world.
 
 ## Next steps (exact)
 1. **Nordhamn polish**: terrain pass done (2026-09-28): geology toolkit, river rebuilt (no spills by design: falls

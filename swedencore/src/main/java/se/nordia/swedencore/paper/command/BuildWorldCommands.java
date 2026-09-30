@@ -12,12 +12,13 @@ import se.nordia.swedencore.paper.world.BuildWorld;
 import java.util.List;
 import java.util.Locale;
 
-/** {@code /world bygg}, {@code /world nordia} and {@code /world trad}: op-only travel between the main world and the flat build world. */
+/** {@code /world bygg}, {@code /world nordia} {@code /world trad} and {@code /world hus}: op-only travel between the main world and the flat build world. */
 public final class BuildWorldCommands {
 
     private static final String BUILD = "bygg";
     private static final String MAIN = "nordia";
     private static final String TREES = "trad";
+    private static final String HOUSES = "hus";
 
     private final CommandServices svc;
     private final BuildWorld buildWorld;
@@ -37,7 +38,7 @@ public final class BuildWorldCommands {
                 .then(Commands.argument("varld", StringArgumentType.word())
                         .suggests((c, b) -> {
                             String remaining = b.getRemainingLowerCase();
-                            for (String name : List.of(BUILD, MAIN, TREES)) {
+                            for (String name : List.of(BUILD, MAIN, TREES, HOUSES)) {
                                 if (name.startsWith(remaining)) {
                                     b.suggest(name);
                                 }
@@ -69,6 +70,14 @@ public final class BuildWorldCommands {
                                     if (BuildWorld.isBuildWorld(player.getWorld())) {
                                         buildWorld.plantTrees(true);
                                         svc.messages().send(player, "buildworld.trees");
+                                    } else {
+                                        svc.messages().send(player, "buildworld.trees_elsewhere");
+                                    }
+                                }
+                                case HOUSES -> {
+                                    if (BuildWorld.isBuildWorld(player.getWorld())) {
+                                        buildWorld.buildHouses();
+                                        svc.messages().send(player, "buildworld.houses");
                                     } else {
                                         svc.messages().send(player, "buildworld.trees_elsewhere");
                                     }

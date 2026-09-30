@@ -68,6 +68,14 @@ public final class BuildWorld {
         }
     }
 
+    /** Builds the ten livable houses south of the tree row. */
+    public void buildHouses() {
+        World build = world();
+        if (build != null) {
+            new BuildHouses(build).build(true);
+        }
+    }
+
     public World world() {
         return Bukkit.getWorld(NAME);
     }
