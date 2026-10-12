@@ -1,6 +1,6 @@
 name: SwedenCore
 version: '${version}'
-main: se.nordia.swedencore.SwedenCorePlugin
+main: se.nordia.plugins.SwedenCorePlugin
 api-version: '26.2'
 description: NORDIA — player-driven Minecraft society MMO core
 authors: [NORDIA]
@@ -18,6 +18,21 @@ permissions:
       nordia.admin.city: true
       nordia.admin.spawn: true
       nordia.admin.buildworld: true
+      nordia.admin.guide: true
+      nordia.admin.tutorial: true
+      nordia.essentials.warp.manage: true
+  nordia.essentials.bypass:
+    description: Skip every teleport delay and cooldown (essentials.yml)
+    default: op
+  nordia.essentials.warp.manage:
+    description: Create and delete warps
+    default: op
+  nordia.admin.tutorial:
+    description: Place and remove tutorial boards
+    default: op
+  nordia.admin.guide:
+    description: Move the guide NPC and see its status
+    default: op
   nordia.admin.buildworld:
     description: Use /world to travel to the flat build world
     default: op

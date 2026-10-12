@@ -1,0 +1,15 @@
+# ─────────────────────────────────────────────────────────────
+#  Tutorial — the Vex that opens the /tutorial menu
+#  Edit this file, save, then run /nordia reload (no restart needed).
+# ─────────────────────────────────────────────────────────────
+# A friendly Vex hovers where you place him, with only the word below above his head. Click him to open the menu.
+#   /tutorial skapa    place him where you stand
+#   /tutorial flytta   move the nearest one to where you stand
+#   /tutorial ta-bort  remove the nearest one
+#   /tutorial lista    list them
+# Players can also open the menu themselves with /tutorial. The topic texts are in the language files
+# (tutorial.<topic>.name / .desc / .text in lang/sv_SE.properties and en_US.properties).
+
+board:
+  # The name above his head (MiniMessage: gradients, <bold>, colours).
+  title: "<bold><gradient:#8ff0ff:#3b82f6:#4338ca>Tutorial</gradient></bold>"

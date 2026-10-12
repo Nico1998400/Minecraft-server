@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────
+#  Guide — Brage, the AI guide at spawn
+#  Edit this file in any text editor, save, then restart the server.
+# ─────────────────────────────────────────────────────────────
+# Players right-click him and chat with an AI model that knows NORDIA and their own progress.
+# The AI key is NEVER written here: put NORDIA_AI_API_KEY in the .env file in the project root (see .env.example).
+# Without a key Brage still stands there and points players to /tutorial.
+# Move him with /brage flytta (his position is saved in guide-position.yml). Check the AI with /brage status.
+
+enabled: true
+name: Brage
+# Optional: a Minecraft account name (max 16 chars) whose skin Brage wears. Empty = the default skin.
+skin: ""
+# The model name picks the provider: gemini-... uses Google Gemini, claude-... uses Anthropic. The key in .env must match.
+# Cheap and fast is plenty for a guide: gemini-3.1-flash-lite (or claude-haiku-5-5 with an Anthropic key).
+model: gemini-3.1-flash-lite
+max-output-tokens: 400
+# Earlier question/answer pairs the guide remembers during a conversation.
+max-history-turns: 10
+max-message-length: 300
+# Cost protection: minimum seconds between two questions from one player, and questions per player per day (UTC).
+min-interval-seconds: 3
+daily-message-limit: 100
+
+# ─── Walking around ───
+# He moves while nobody is talking to him, and stops (turning to face you) when someone does.
+#  * By default he WANDERS: every few seconds he picks a random spot near his post and walks there. He only picks floor he
+#    can stand on, with free space for his body, never through walls or closed doors, and (require-roof) only spots under
+#    a roof, so he stays inside the building. Place his post with /brage flytta.
+#  * Or give him a fixed ROUTE: /brage rutt start, walk the route, /brage rutt stopp (a route needs 2+ points and replaces the
+#    wandering). /brage rutt rensa goes back to wandering.
+patrol:
+  enabled: true
+  # Blocks per second.
+  speed: 1.3
+  # With a route: how long he stands still at the start after each lap (0 = never stops).
+  pause-seconds: 8
+  wander:
+    enabled: true
+    # How far from his post (in blocks) he may wander.
+    radius: 7
+    # Only wander to spots with a roof above (inside a building). Turn off to let him wander outdoors too.
+    require-roof: true
+
+# The symbol floating above his head. Each player sees their own: a gold "!" while there is a quest to take (new players
+# until they have spoken to him once), a green check when a quest is done, nothing otherwise. Admins can test it with
+# /brage emblem <player> nytt|klart|inget; the future quest system sets it automatically.
+marker:
+  # emblem = a floating gold quest emblem (a nether star for players without the NORDIA resource pack, see swedencore/resourcepack/README.md)
+  # text   = the symbol below as gold text
+  style: emblem
+  enabled: true
+  symbol: "!"
+  hide-after-talk: true
+
+# A short mumble while he talks (there is no real voice, only chat text).
+sound:
+  talk: true

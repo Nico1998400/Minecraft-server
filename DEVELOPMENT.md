@@ -77,3 +77,32 @@ Useful console/admin commands:
 - **"Checksum mismatch for applied migration"** — a committed migration file was edited. Revert it and add a new one.
 - **Embedded PostgreSQL fails on Windows** — ensure the temp directory is writable and no antivirus blocks
   `postgres.exe` in `%TEMP%\embedded-pg`.
+
+## Changing code without restarting the server (hot reload)
+
+1. Start the server in debug mode: `./gradlew :swedencore:runServer -Pdebug` (opens port 5005; normal startup otherwise).
+2. In VS Code run the launch configuration **"Anslut till NORDIA-servern (hot reload)"** (Run and Debug, F5). It attaches to the server.
+3. Edit a Java file and save. VS Code recompiles and swaps the changed code into the running server within a second.
+
+Limits (a JVM rule, not ours): you can change what existing methods *do*, but not add or remove methods, fields or classes, and
+not change a method signature. Those changes, and new language keys or `paper-plugin.yml`, still need a restart. Edits to
+`essentials.yml` need no rebuild at all: change the live copy in `swedencore/run/plugins/SwedenCore/` and run `/nordia reload`.
+
+## Running a command on the running server (and stopping it cleanly)
+
+`powershell -File tools/servercmd.ps1 "<command>"` runs any console command on the dev server that is already running, for
+example `save-all flush`, `stop` or `brage rutt info`. It is the clean way to stop a server that was started in the background
+(do not kill the process, and do not rebuild the plugin jar while the server runs: the running server then loses classes).
+
+## Which way to apply a change (fastest first)
+
+| What you changed | How to apply it |
+|---|---|
+| Brage settings (`guide.yml`: walking, emblem, sound), `essentials.yml`, language texts | `/nordia reload` in game, no restart |
+| What an existing method does (logic, numbers, messages built in code) | Save the file while attached with VS Code F5 (hot reload, see above) |
+| New methods, fields, classes, commands, language keys, `paper-plugin.yml` | `powershell -File tools/restart-server.ps1` (saves, stops cleanly, builds, starts; about 30-40 s, players reconnect) |
+
+A full plugin reload inside the running server is deliberately not offered: Paper cannot unload a plugin cleanly, so it would
+leave the old classes, a second Brage and open ports (database, web server, Discord bot) behind.
+Run the restart script from a terminal (or redirect its output to a file when a tool waits for it), because the server it
+starts keeps the output pipe open.

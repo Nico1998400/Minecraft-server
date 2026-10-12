@@ -45,6 +45,8 @@
 | `finance` | Loans, bankruptcy |
 | `logistics` | Transport jobs with collateral |
 | `shares` | Share registry, escrowed offers and bids, company holdings, dividends, valuation, closing equity |
+| `essentials` / `social` / `discord` | Homes and warps; nicknames, mutes, ignore lists; Discord account links (codes, JDA slash-command bot). Settings in their own yml files. |
+| `guide` | The AI guide (Brage): prompt, short per-player memory, rate limits and daily cap, read-only player facts, `AiClient` interface with Gemini and Anthropic implementations. No tools: it can only produce text, never change game state. Not DB-backed. |
 | `player` | Registration and profiles |
 | `events` | Domain events published after commit |
 | `paper` | Everything that touches Bukkit/Paper/Adventure |

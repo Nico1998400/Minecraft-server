@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────
+#  Discord — /discord, /link and /unlink
+#  Edit this file in any text editor, save, then restart the server.
+# ─────────────────────────────────────────────────────────────
+
+# Shown by /discord (players click it). Must start with https://
+invite: "https://discord.gg/your-invite-here"
+
+# /link lets a player connect their Minecraft account to their Discord account:
+#   1. in game: /link  -> a code
+#   2. in Discord: /link code:<the code>   (answered by the bot below)
+# The bot token is NEVER written here: put NORDIA_DISCORD_TOKEN in the .env file (see .env.example).
+# Create the bot at https://discord.com/developers/applications, add it to your server with the "bot" and
+# "applications.commands" scopes. It needs no special gateway intents.
+bot:
+  enabled: false
+  # Your Discord server id (turn on Developer Mode in Discord, right-click the server, Copy Server ID).
+  # With it the /link command appears instantly; without it Discord can take up to an hour.
+  guild-id: ""
+
+# What the bot answers in Discord (only the person who typed the command sees it).
+# {player} is replaced with the Minecraft name.
+replies:
+  command_description: "Länka ditt Minecraft-konto"
+  code_description: "Koden du fick med /link i spelet"
+  linked: "Klart! Ditt Discord-konto är nu länkat med ditt Minecraft-konto."
+  invalid_code: "Koden är ogiltig eller har gått ut. Skriv /link i spelet för att få en ny."
+  already_linked: "Det här Minecraft-kontot är redan länkat."
+  account_taken: "Ditt Discord-konto är redan länkat till ett annat Minecraft-konto."
+  error: "Något gick fel. Försök igen om en stund."

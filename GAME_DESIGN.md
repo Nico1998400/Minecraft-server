@@ -293,3 +293,23 @@ in the ledger, and never the best deal for goods players can supply.
 
 The ledger (every transfer typed and referenced), reputation events and domain events are the data foundation for
 valuation, news and player history later.
+
+## 14. The guide NPC (Brage)
+
+A friendly guide stands at spawn. Players right-click him and then simply type in chat (public chat is bypassed while
+they talk to him). He answers in free language instead of fixed `/help` commands, knows the game rules and the player's
+own situation (name, balance, reputation, skills — read only) and nudges them towards the next sensible step,
+preferably *with other players* (jobs, contracts, shops, companies).
+
+Design rules:
+- **He can only talk.** No tools: he cannot give money, items, ranks or rewards and never promises any. This keeps
+  "no artificial money printing" intact and makes prompt injection harmless.
+- **No mint source.** Any future quest rewards must be reputation or items and follow §5 of CLAUDE.md; completion is
+  checked by domain services, never by the AI.
+- Cost protection: minimum interval per question, daily cap per player (UTC), short memory, small output limit, cheap
+  model (`guide.model`). Without an API key he still stands there and points to `/meny`.
+- Player text is untrusted input to the model and is shown to players as plain text only (never MiniMessage).
+- The API key lives only in the environment (`NORDIA_AI_API_KEY`, see `.env.example`), never in config files or logs.
+
+Roadmap: (1) this conversational guide at spawn, (2) quests with domain-checked completion and a guide that walks along,
+(3) one personal guide figure per player (packet based, visible only to its owner).

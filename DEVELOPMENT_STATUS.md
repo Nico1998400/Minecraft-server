@@ -1,6 +1,6 @@
 # Development Status
 
-_Last updated: 2026-09-29_
+_Last updated: 2026-10-12_
 
 ## Current phase
 **P0, P1, P2 complete (MVP). P3 feature-complete:** market statistics, loans, bankruptcy, company finance, renting,
@@ -82,7 +82,7 @@ done. Remaining: stock market / exchange (#43).
       the mouth, king's hall + world tree on the plateau, stave church, stilt quarter, longships, boathouses, beacon,
       palisade and watchtowers. Built in the dev world 2026-09-27 (centre `-572 64 378`, spawn on the ship deck
       `-577 65 369` facing the town); 99.2 % of 9 832 sampled blocks matched. Previews: `--renders all` (ray tracer).
-      Old dev world kept as `swedencore/run/world_backup_2026-09-27`.
+      Old dev world kept as `run/world_backup_2026-09-27`.
 - Decisions (agreed with the owner):
   - Both GUI and commands: a main menu (`/meny` + a "NORDIA pass" item in the last hotbar slot) calls the same services
     as the commands; commands stay for experienced players.
@@ -93,7 +93,36 @@ done. Remaining: stock market / exchange (#43).
     warehouse = logistics, market stalls = rentable player shops (not an auction house).
 - **Build world** (2026-09-30): flat creative world `bygg`, created/loaded on startup (`paper.world.BuildWorld`).
   `/world bygg` and `/world nordia` are op-only (`nordia.admin.buildworld`, re-checked in `BuildWorldListener` on every teleport).
-  Peaceful, no mobs/weather/fire/time, and skill XP + job progress are disabled in it. Tree showcase (11 hand-shaped trees, `paper.world.BuildTrees`) is planted east of spawn (x 16..316, z 16) only by `/world trad` (not automatically). House showcase: `/world hus` builds 10 livable houses (long house, timber town house, stone cottage, Falu-red cottage, manor with tower, inn, stilt house, round tower, smithy, bakery) south of the trees (street z 54, lots z 62..88, x 16..380) via `paper.world.BuildHouses`/`HouseKit`; untested in-game, expect tweaks. Not yet: schematic copy to the main world.
+  Peaceful, no mobs/weather/fire/time, and skill XP + job progress are disabled in it. Tree showcase (11 hand-shaped trees, `paper.world.BuildTrees`) is planted east of spawn (x 16..316, z 16) only by `/world trad` (not automatically). House showcase: `/world hus` builds 10 livable houses (long house, timber town house, stone cottage, Falu-red cottage, manor with tower, inn, stilt house, round tower, smithy, bakery) south of the trees (street z 54, lots z 62..88, x 16..380) via `paper.world.BuildHouses`/`HouseKit`; untested in-game, expect tweaks. Spawn showpieces: `/world sevard` (op, in `bygg`) lifts a landscaped plateau south of the houses (x 0..383, z 124..186, +5 blocks, soft slopes) with a promenade (z 132), an avenue from the house street, a river and a lake, and builds 8 landmarks in a row via `paper.world.BuildLandmarks`: fountain plaza, gatehouse with curtain walls, clock tower, windmill with wheat field, arch bridge, lighthouse on an island with a pier, market with 10 stalls and an obelisk monument; trees and flowers are scattered; untested in-game, expect tweaks. Not yet: schematic copy to the main world.
+- **Essentials** (2026-10-12), settings in `essentials.yml` (own file; `/nordia reload`). Every teleport and saved/deleted home/warp is
+  logged to the console (`log-actions`). Ops skip delays (`nordia.essentials.bypass`).
+  - Teleport: `/spawn /sethome /home /delhome /homes /renamehome /setwarp /warp /delwarp /warps /warpinfo /back /tpa /tpahere
+    /tpaccept /tpdeny /tpacancel /tpall /tptoggle /tphere /tppos /top /jump /tpr` (random teleport, config radius), warm-up and cooldown per kind.
+  - Player: `/heal /feed /fly /god /gms /gmc /gma /gmsp /speed /vanish /suicide /burn /ext /lightning /hat /more /repair /afk`.
+  - Chat: `/msg /r /msgtoggle /me /broadcast /broadcastworld /helpop /ignore /socialspy /mute /unmute /nick /realname /motd /rules /info`
+    (nicknames, mutes, ignore lists in DB V19, cached on join).
+  - Info: `/online /seen /whois /playtime /ping /near /getpos /compass /depth /tps`.
+  - World/items: `/sun /rain /storm /day /night /ptime /pweather /butcher /remove /spawnmob /workbench /anvil /grindstone /loom
+    /cartographytable /smithingtable /stonecutter /disposal /enderchest /invsee /item /skull /itemname /itemlore`; moderation: `/tempban /kickall`.
+  - Deliberately not copied: anything that touches money (balance, pay, eco, sell, worth: NORDIA has its own economy), jail, kits,
+    mail, powertool, fun commands. Vanilla `/tp /kill /time /weather /gamemode /ban /kick /give` are unchanged.
+  - Discord (`discord.yml`): `/discord` (invite), `/link` (code, 10 min) + Discord slash command `/link code:XXXXXX` answered by a JDA bot,
+    `/unlink`. The bot only starts with `bot.enabled: true` and `NORDIA_DISCORD_TOKEN`; **not tested against real Discord**.
+  - Tests: domain (homes, warps, rename, nicknames, mutes, ignore, Discord codes, durations); the Paper layer was smoke-tested from the
+    console only (no client): `/tps /online /motd /rules /info /discord /whois /seen /broadcast /sun /msg` work, `/msg` replaces vanilla.
+  - Not yet: tab completion of home/warp names, `/afk` auto-detect, kits, jail, mail.
+- **Brage walks and shows a quest emblem** (2026-10-12): he walks a route inside the building (recorded in game: `/brage rutt start`, walk, `/brage rutt stopp`; `rensa`, `punkt`, `info`; saved in `guide-position.yml`), stops and faces whoever talks to him, and pauses at the route start each lap. Above his head floats a gold quest emblem until the player has talked to him once (per-player, stored in the player data, only that player sees it). Two emblems from the owner art in `resourcepack/source/`: gold "!" (quest to take, a nether star with model `nordia:quest_available`) and green check (quest done, an emerald with `nordia:quest_ready`); each player sees their own state (`GuideNpc.setMark`, stored in the player data; `/brage emblem <player> nytt|klart|inget` for testing; the future quest system calls it). The optional resource pack (`swedencore/resourcepack/`, `./gradlew :swedencore:buildResourcePack`) shows the real art, without it players see a nether star / emerald. Talking plays a short villager mumble (no real voice). Settings in `guide/guide.yml`. Smoke-tested on the server (figure and emblem spawn, no errors); **walking and the emblem look not seen in a real client** — the walk is done by small teleports, so legs may glide instead of animate.
+- **Resource pack on join** (2026-10-12): players are asked once to install the NORDIA pack (Yes downloads it, No is remembered; `/texturer` still works; not forced unless `texture-pack.required`). The pack zip is bundled in the jar and handed out by a built-in web server (`paper.gui.PackHost`, GET one fixed path, SHA-1 computed automatically); set `texture-pack.host.public-address` and open TCP 8765. Fixed a config bug: settings added in a newer version were ignored on an older `config.yml` when read with an explicit default; use `text(path)` (single-argument getters) so jar defaults apply (this also made the server-list MOTD work on an old config).
+- **Layout** (2026-10-12): Java package renamed to `se.nordia.plugins`; each module has its own config file next to its code (e.g. `essentials/essentials.yml`).
+- **Server list MOTD** (2026-10-12): two MiniMessage lines in `config.yml` `motd:` (gradient NORDIA title), shown by `paper.listener.MotdListener`; empty `line1` falls back to server.properties.
+- **Guide NPC "Brage"** (2026-10-12): `guide` module (pure Java: `GuideService`, `AiClient`/`AnthropicClient`, `GuideConfig`,
+  `GuideContextBuilder`, `resources/guide/knowledge.md`) + `paper.guide.GuideNpc` (a non-persistent `Mannequin` at spawn,
+  right-click to talk, chat goes to him while talking, ends on click/walk away/3 min idle/quit) + `/brage` (`/guide`;
+  admin: `flytta` moves him to your position and saves `guide.yml`, `status` shows AI on/off — never the key).
+  AI key: put `NORDIA_AI_API_KEY` in the gitignored `.env` (template `.env.example`); `runServer` passes `.env` to the dev
+  server, real environment variables win. Config in `config.yml` `guide:` (model default `gemini-3.1-flash-lite`; `gemini-...` = Google, `claude-...` = Anthropic; daily cap,
+  interval, history). Without a key he points to `/meny`. 11 new tests (fake AI, local HTTP fake of the API). Default
+  position is next to the world spawn; use `/brage flytta` to place him. Untested with a real client.
 
 ## Next steps (exact)
 1. **Nordhamn polish**: terrain pass done (2026-09-28): geology toolkit, river rebuilt (no spills by design: falls
@@ -106,7 +135,7 @@ done. Remaining: stock market / exchange (#43).
    sekelskiftesvilla, funkis, mansard, suterräng, tvåplanshus, modern, lyx, hörnvilla, 60-tal) on private lots with
    gardens of four characters. Lots are valued by location and written to `build/villas_lots.json` (address, tier,
    area, bounds, waterfront/view/corner/park, suggested price) for the property system. Built in a fresh dev world at
-   origin `0 64 0` (spawn `104 66 6`); the Nordhamn world is kept as `swedencore/run/world_nordhamn_2026-09-28`
+   origin `0 64 0` (spawn `104 66 6`); the Nordhamn world is kept as `run/world_nordhamn_2026-09-28`
    (rename it back to `world` to switch).
 1c. **Old spawn in a fresh 26.2 world (BUILT 2026-09-29)**: the owner wants the builds of their old 1.18.1 server
    (original at `Desktop/1.18.1 Paper/world_test`, 33 GB; spawn hub around x 1380-1830, z -130..310) in a brand-new
@@ -144,9 +173,12 @@ done. Remaining: stock market / exchange (#43).
      started at the roof / tree-crown height and filled building and tree interiors; fixed by re-running the `nh*`
      tiles and `kyrka` (pocket fill below the copy stays). Fill-only now starts from `Transplant.terrain` (soil
      under roofs and crowns).
-2. **Main menu GUI** (`/meny`, NORDIA pass item) → then first-join onboarding (see decisions above) → spawn protection
+2. **Main menu GUI**: `/meny` (alias `/menu`) is done (`paper.gui.MainMenu`, 45-slot window, one button per system that runs the
+   matching command as the player, plus a "How NORDIA works" intro in chat); untested in-game. Still to do: the NORDIA pass
+   item in the last hotbar slot → then first-join onboarding (see decisions above) → spawn protection
    for the Nordhamn area in the plugin (currently only vanilla `spawn-protection=16`) and making the market stalls
    rentable server-owned properties.
+2b. **Guide quests** (see GAME_DESIGN.md §14): quest system with domain-checked completion (rewards = reputation/items, never money, idempotent), then Brage walking along on quests, then one personal guide figure per player.
 3. **Playtest pass** with real clients on the dev server; fix GUI/listener issues found (see above).
 4. Smoke-test V16 and V17 on the dev Paper server (share bids and company investments: domain tests pass, not yet loaded
    on the real server).

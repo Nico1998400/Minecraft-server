@@ -1,0 +1,185 @@
+# ─────────────────────────────────────────────────────────────
+#  SwedenCore — NORDIA configuration
+# ─────────────────────────────────────────────────────────────
+
+language:
+  # Server default language: sv_SE or en_US. Players can override with /language.
+  default: sv_SE
+
+database:
+  host: localhost
+  port: 5432
+  name: nordia
+  user: nordia
+  # Prefer the NORDIA_DB_PASSWORD environment variable in production. Never commit real passwords.
+  # The default matches docker-compose.yml for local development only.
+  password: nordia_dev_only
+  ssl-mode: disable
+  pool-size: 10
+  connection-timeout-ms: 5000
+  # A NORDIA server without its database must not run: economy actions would be lost.
+  shutdown-server-on-failure: true
+
+economy:
+  # Amounts in SEK. Decimals allowed with , or . (max 2). Suffixes k and m are allowed.
+  # One-time money created for each new player. This is a controlled mint (see GAME_DESIGN.md §3).
+  starter-grant: "1000"
+  # Upper bound for any single transfer.
+  max-transfer: "100000000"
+  # Smallest /pay amount.
+  min-payment: "0.01"
+
+companies:
+  # Paid by the founder. Destroyed (money sink) until cities can receive fees.
+  registration-fee: "5000"
+  max-owned-companies: 3
+  max-open-positions: 20
+  max-salary-per-hour: "100000"
+  max-pending-applications: 10
+  # Verified work minutes are paid in batches this often (1-60).
+  payroll-interval-minutes: 5
+  # Company reputation change for every payroll batch it cannot pay.
+  wage-default-reputation: -1
+
+contracts:
+  # Creation fee as % of the reward (money sink). Makes collusive round-trips cost something.
+  fee-percent: 2
+  max-active-per-issuer: 10
+  max-active-per-contractor: 5
+  max-duration-hours: 720
+  # Contract XP (only with a skill requirement) = reward SEK / sek-per-xp, capped.
+  sek-per-xp: 20
+  max-xp-per-contract: 5000
+  # Contracts below this reward give no reputation. Reputation is granted once per issuer/contractor pair per day.
+  min-reward-for-reputation: "500"
+  reputation:
+    contractor-completed: 2
+    issuer-completed: 1
+    abandoned: -3
+    expired: -2
+
+properties:
+  max-owned-per-player: 10
+  # Largest property region in blocks (width × length × height).
+  max-volume: 2000000
+  max-trusted: 20
+  # City land outside properties is public space: nobody builds there (admins with nordia.admin.property.bypass can).
+  protect-city-land: true
+
+storage:
+  # Inventory (stash) capacity in stacks. Each WAREHOUSE property the owner occupies adds stacks-per-warehouse.
+  player-stacks: 108
+  company-stacks: 216
+  stacks-per-warehouse: 1080
+
+shares:
+  # Every new company starts with this many shares, held by the founder. Owners can issue more into the treasury.
+  initial-shares: 1000
+  max-total-shares: 1000000
+  # Fee on share sales, paid by the seller and destroyed (makes wash trading cost money).
+  fee-percent: 1
+  max-offer-hours: 336
+  max-open-offers: 10
+  # When a company that has outside shareholders buys or sells another company's shares, the price per share cannot
+  # exceed this multiple of the target's book value (buy) or fall below book / multiple (sell). Wholly-owned companies
+  # are unrestricted — the owner could withdraw the cash and trade personally anyway.
+  max-investment-book-multiple: 3
+
+renting:
+  min-period-hours: 24
+  max-period-hours: 720
+  # Unpaid rent: time before the tenant is evicted.
+  grace-hours: 24
+  eviction-reputation: -5
+
+settlements:
+  # Extra space kept between a settlement's largest possible area and cities or other settlements.
+  spacing-buffer: 64
+  max-invites: 20
+  # Requirements to REACH each tier. OUTPOST = founding (cost paid by the founder).
+  # Upgrade costs are paid from the settlement treasury and destroyed (public works).
+  tiers:
+    OUTPOST:    { radius: 32,  min-members: 1,  min-treasury: "0",       min-age-days: 0,  min-leader-reputation: 0,  cost: "10000" }
+    SETTLEMENT: { radius: 64,  min-members: 3,  min-treasury: "25000",   min-age-days: 3,  min-leader-reputation: 0,  cost: "10000" }
+    VILLAGE:    { radius: 128, min-members: 8,  min-treasury: "100000",  min-age-days: 14, min-leader-reputation: 10, cost: "50000" }
+    TOWN:       { radius: 192, min-members: 15, min-treasury: "500000",  min-age-days: 30, min-leader-reputation: 25, cost: "200000" }
+    CITY:       { radius: 256, min-members: 30, min-treasury: "2000000", min-age-days: 60, min-leader-reputation: 50, cost: "1000000" }
+
+buy-orders:
+  # Listing fee as % of the escrowed budget (money sink).
+  fee-percent: 1
+  max-active-per-issuer: 10
+  max-duration-hours: 336
+
+loans:
+  # Player/company lending. The system collects installments automatically; no money is created.
+  max-installments: 52
+  min-interval-hours: 24
+  max-interval-hours: 720
+  max-interest-percent: 100
+  offer-ttl-hours: 72
+  # Installments count as overdue after this grace period.
+  grace-hours: 24
+  # Overdue installments before default (short loans default when all are overdue). Company default = bankruptcy.
+  default-after-overdue-installments: 3
+  max-open-offers: 10
+  reputation:
+    late-installment: -3
+    default: -20
+    repaid: 2
+
+shops:
+  max-listings-per-shop: 54
+  max-bundles-per-purchase: 16
+
+skills:
+  max-level: 100
+  # XP to advance from level L to L+1 = base * L^exponent
+  level-curve:
+    base: 50
+    exponent: 1.5
+  # XP per skill per rolling hour before diminishing returns. 0 disables the cap for that skill.
+  hourly-soft-cap:
+    MINING: 6000
+    FARMING: 6000
+    HERBALISM: 3000
+    BUILDING: 3000
+    FORESTRY: 6000
+    FISHING: 6000
+    ENGINEERING: 6000
+    LOGISTICS: 6000
+  # Percentage of XP still granted above the soft cap.
+  soft-cap-percent: 25
+  # Extra XP for work in the skill of your on-duty job.
+  employment-bonus-percent: 10
+  # Without real input (turning, chatting, commands, inventory clicks) for this long a player is AFK.
+  afk-threshold-seconds: 180
+  flush-interval-seconds: 30
+  # Placed building blocks must still stand after this long to give Building XP.
+  building-maturity-seconds: 300
+
+# The server texture pack: quest emblems and other custom art. When a player joins they are asked once ("This server
+# recommends a custom resource pack. Download and install it?"); Yes downloads it automatically. Players who say No are not
+# asked again and can still switch it on with /texturer or the menu. It is not forced unless you set required: true.
+#
+# Easiest: the pack is built into the plugin and the plugin hands it out itself on a small web port (host below). You only
+# set public-address and open that port (TCP) in your router/firewall. For testing on your own PC use "localhost".
+# Or host the zip yourself and set url + sha1 (then the built-in host is not used).
+texture-pack:
+  ask-on-join: true
+  required: false
+  host:
+    enabled: true
+    port: 8765
+    # The address players use to reach this server from outside (a domain or your public IP), no http:// and no port.
+    public-address: ""
+  url: ""
+  sha1: ""
+  # Any UUID; keep it stable. Change it when you want clients to forget the old pack.
+  id: "5c3b8a6e-2f1d-4e0a-9a43-6d1f0b7c2e11"
+
+# The two lines shown in the multiplayer server list (MiniMessage: gradients, hex colours, <bold>). Leave line1 empty
+# to use the plain motd from server.properties instead.
+motd:
+  line1: "<bold><gradient:#8ff0ff:#3b82f6:#4338ca:#1e1b4b>NORDIA</gradient></bold> <dark_gray>•</dark_gray> <white>Bygg ett liv</white>"
+  line2: "<gradient:#67e8f9:#38bdf8>Städer</gradient> <dark_gray>•</dark_gray> <gradient:#86efac:#34d399>Företag</gradient> <dark_gray>•</dark_gray> <gradient:#fcd34d:#f59e0b>Jobb</gradient> <dark_gray>•</dark_gray> <gradient:#fde047:#facc15><bold>Handel</bold></gradient>"

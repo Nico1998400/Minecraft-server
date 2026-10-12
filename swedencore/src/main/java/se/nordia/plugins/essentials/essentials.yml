@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────────────────────
+#  Essentials — spawn, homes, warps, tpa and back
+#  Edit this file in any text editor, save, then run /nordia reload (no restart needed).
+# ─────────────────────────────────────────────────────────────
+
+# Players with the permission nordia.essentials.bypass (ops by default) skip every delay and cooldown.
+
+# For each kind of teleport:
+#   warmup-seconds   how long the player must stand still before being teleported (0 = instantly)
+#   cooldown-seconds how long until the same player can use that kind of teleport again (0 = no cooldown)
+teleport:
+  spawn: { warmup-seconds: 3, cooldown-seconds: 0 }    # /spawn
+  home:  { warmup-seconds: 3, cooldown-seconds: 10 }   # /home
+  warp:  { warmup-seconds: 3, cooldown-seconds: 0 }    # /warp
+  tpa:   { warmup-seconds: 3, cooldown-seconds: 30 }   # /tpa (the player who asked waits)
+  back:  { warmup-seconds: 3, cooldown-seconds: 10 }   # /back
+  tpr:   { warmup-seconds: 5, cooldown-seconds: 300 }  # /tpr (random teleport)
+
+# The warm-up is cancelled if the player moves or takes damage.
+cancel-on-move: true
+cancel-on-damage: true
+
+homes:
+  # How many homes each player may have (/sethome <name>).
+  max-per-player: 3
+
+tpa:
+  # Seconds a teleport request stays open before it expires.
+  request-timeout-seconds: 60
+
+# Write a line to the server console for every teleport and every saved/deleted home or warp, so you can follow
+# what happens.
+log-actions: true
+
+# /tpr - random teleport. The player lands somewhere between min and max blocks from the world spawn, on safe ground.
+tpr:
+  min-radius: 250
+  max-radius: 2000
+
+# /near - how far (in blocks) to look for other players.
+near:
+  radius: 200
+
+# Texts for /motd, /rules and /info. One entry per line, MiniMessage formatting (<gold>, <bold>, <gradient:#a:#b>...).
+texts:
+  motd:
+    - "<gradient:#8ff0ff:#3b82f6>Välkommen till NORDIA!</gradient>"
+    - "<gray>Skriv <white>/tutorial</white> för att se allt du kan göra.</gray>"
+  rules:
+    - "<gold>Regler</gold>"
+    - "<gray>1. Var schysst mot andra spelare.</gray>"
+    - "<gray>2. Inga exploits, dupes eller bugganvändning.</gray>"
+    - "<gray>3. Ingen grief eller stöld utanför spelets regler.</gray>"
+  info:
+    - "<gold>NORDIA</gold> <gray>- bygg ett liv.</gray>"
+    - "<gray>Jobb, företag, handel och egna städer. Använd <white>/tutorial</white> eller fråga Brage vid spawn.</gray>"

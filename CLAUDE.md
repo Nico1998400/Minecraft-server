@@ -25,16 +25,16 @@ It is **not** Towny, EarthMC, McMMO, a Jobs plugin, or an auction-house economy.
 One Paper plugin, **SwedenCore** (`:swedencore`), internally modular:
 
 ```
-se.nordia.swedencore
+se.nordia.plugins
 ├── SwedenCorePlugin        Paper entry point (wiring only)
 ├── core                    NordiaCore composition root, config records, clock
 ├── database                Database (Hikari), Tx, MigrationRunner
 ├── player  economy  skills  jobs  companies  contracts  reputation
-├── properties  cities  settlements  localization  events  util
+├── properties  cities  settlements  localization  events  guide  essentials  social  discord  util
 └── paper                   ALL Bukkit/Paper/Adventure code: commands, listeners, gui, scheduler, text
 ```
 
-**Hard layering rule:** only `se.nordia.swedencore.paper..` and `SwedenCorePlugin` may import `org.bukkit`, `io.papermc`
+**Hard layering rule:** only `se.nordia.plugins.paper..` and `SwedenCorePlugin` may import `org.bukkit`, `io.papermc`
 or `net.kyori`. Domain modules are pure Java and fully testable against real PostgreSQL.
 `ArchitectureTest` enforces this — do not weaken it.
 
@@ -86,6 +86,14 @@ Services are synchronous and thread-safe; the database is the source of truth. T
   `Placeholder.unparsed` — never parsed — to block tag injection.
 - Permission checks happen in the domain service (e.g. "is company owner"), not only in the command.
 
+## 7b. Config files (one per module)
+
+Each module keeps its editable config **next to its code**, in its own package folder:
+`se/nordia/plugins/essentials/essentials.yml`, `guide/guide.yml`, `discord/discord.yml`, `production/production.yml`,
+`skills/skills.yml` and `core/config.yml` (database, economy, companies, ...). Gradle copies them flat into the jar. On the dev
+server the live copies are in `swedencore/run/plugins/SwedenCore/` (edit those, then `/nordia reload` for essentials.yml, otherwise
+restart). A new setting goes into its module's own file, never hardcoded. Secrets (AI key, Discord token, DB password) are **never**
+in these files: only in `.env` / environment variables. The Java package is `se.nordia.plugins`.
 ## 8. Localization
 
 - Languages: `sv_SE` (default) and `en_US`. Files: `swedencore/src/main/resources/lang/<locale>.properties` (UTF-8, MiniMessage).
